@@ -3,8 +3,8 @@
 import os
 import json
 
-from transformers import RobertaTokenizer
-from transformers.modeling_roberta import RobertaModel
+from transformers import RobertaTokenizer, RobertaModel
+#from transformers.models.bert.modeling_bert import RobertaModel
 
 def read_config(path):
     config_path = os.path.join(path, 'config.json')
