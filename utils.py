@@ -43,3 +43,12 @@ def get_tokenizer(path):
         print('===========Fail to load Tokenizer!============')
 
     return tokenizer
+
+def tokenize_by_index(tokenizer, seq):
+    seq = seq.split() # seq already being splited
+    tokens_ids = [[tokenizer.bos_token_id]]
+    for i,ele in enumerate(seq):
+        if i:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(ele, add_prefix_space = True)))
+        else:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(ele)))
+    tokens_ids.append([tokenizer.eos_token_id])
+    return tokens_ids
