@@ -44,11 +44,28 @@ def get_tokenizer(path):
 
     return tokenizer
 
-def tokenize_by_index(tokenizer, seq):
-    seq = seq.split() # seq already being splited
+def tokenize_by_index(tokenizer, seq, index=None, no_flat=False):
+    seq = seq.split()   # seq already being splited
     tokens_ids = [[tokenizer.bos_token_id]]
     for i,ele in enumerate(seq):
         if i:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(ele, add_prefix_space = True)))
         else:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(ele)))
     tokens_ids.append([tokenizer.eos_token_id])
+
+    if not index==None:
+        i_s = 0     #start index of target word
+        for i, ele in enumerate(tokens_ids):
+            i_e = i_s+len(ele)-1    #end index of target word
+            if i == index+1:
+                if not no_flat:
+                    tokens_ids = sum(tokens_ids, [])  # return a flat ids list
+                return tokens_ids, [i_s, i_e]
+            i_s += len(ele)
+    
+    if not no_flat:
+        tokens_ids = sum(tokens_ids, [])  # return a flat ids list
     return tokens_ids
+
+
+
+

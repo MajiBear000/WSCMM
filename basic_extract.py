@@ -52,8 +52,15 @@ def prepare_embedding(model, tokenizer, data):
             basic_embedding(model, tokenizer, basic_train[target])
         else:
             embedding = tokenizer(sentence)
-            token_ids = tokenize_by_index(tokenizer, sentence)
-            if not embedding['input_ids'] == sum(token_ids, []):
+            token_ids, ni = tokenize_by_index(tokenizer, sentence, index)
+            if not embedding['input_ids'] == token_ids:
                 print(embedding['input_ids'])
                 print(token_ids)
+            print("-------------------")
+            print(target)
+            t_ids = token_ids[ni[0]]
+            print(ni)
+            print(tokenizer.decode(t_ids))
+            
+            
 
