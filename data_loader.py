@@ -8,6 +8,7 @@ def load_data(args):
     if args.dataset_name == 'vua18' or 'vua20':
         dataset['train'] = read_vua(train_path)
         dataset['test'] = read_vua(test_path)
+    return dataset
 
 def read_vua(file_path, no_fgpos=False):
     dataset = []
