@@ -21,7 +21,7 @@ def main():
     model = get_model(args.model_path)
     tokenizer = get_tokenizer(args.model_path)
 
-    prepare_embedding(model, tokenizer, data)
+    test_emb = prepare_embedding(args, model, tokenizer, data)
 
 if __name__ == '__main__':
     main()

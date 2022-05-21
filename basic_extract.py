@@ -1,8 +1,10 @@
 # -*- conding: utf-8 -*-
+import os
+from os.path import exists
 import numpy as np
 import torch
 from tqdm import tqdm
-from utils import tokenize_by_index
+from utils import tokenize_by_index, save_json, load_json
 
 def target_extract(train_set, basic=True):
     basic_train = {}
@@ -31,7 +33,7 @@ def basic_embedding(model, tokenizer, basic_train):
                 basic_train[target]['idx'] = np.mat(n_idx)
             else:
                 basic_train[target]['idx'] = np.vstack((basic_train[target]['idx'],np.array(n_idx)))
-            
+    print('Start generate basic mean embedding...')
     for target in tqdm(basic_train.keys()):
         basic_emb[target] = []
         t_size = len(basic_train[target]['seq'])
@@ -45,20 +47,25 @@ def basic_embedding(model, tokenizer, basic_train):
             else:
                 vec += outputs[0][0][basic_train[target]['idx'][i][0]]/t_size #[last_hidden_state][batch][index][768]
                 
-        basic_emb[target] = vec         
+        basic_emb[target] = vec.cpu().numpy().tolist()
+    print('finished!')
         
     return basic_emb
 
-def prepare_embedding(model, tokenizer, data):
-    
-    basic_train = target_extract(data['train'])
-    
-    for sample in data['train']:
-        check_index(sample[1], sample[2], sample[0])
-    basic_emb = basic_embedding(model, tokenizer, basic_train)
+def prepare_embedding(args, model, tokenizer, data):
+    basic_emb_path = os.path.join(args.trainset_dir, 'basic_emb.json')
+
+    if not exists(basic_emb_path):
+        basic_train = target_extract(data['train'])
+        basic_emb = basic_embedding(model, tokenizer, basic_train)
+        save_json(basic_emb, basic_emb_path)
+    else:
+        basic_emb = load_json(basic_emb_path)
+        print('Succeed load basic mean embedding:',len(basic_emb))
 
     test_emb = []
-    for sample in data['test']:
+    print('Start output test embedding...')
+    for sample in tqdm(data['test']):
         target = sample[0]
         sentence = sample[1].lower()
         index = sample[2]
@@ -71,7 +78,8 @@ def prepare_embedding(model, tokenizer, data):
         test_vec = outputs[0][0][ni[0]]
         
         if target in basic_emb.keys():
-            target_vec = basic_emb[target]
+            vec = np.array(basic_emb[target])
+            target_vec = torch.from_numpy(vec)
         else:
             tokenized = tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
             with torch.no_grad():
@@ -79,6 +87,7 @@ def prepare_embedding(model, tokenizer, data):
             target_vec = outputs[0][0][0]
 
         test_emb.append([target_vec, test_vec, label])
+    print('test emb loaded!')
     return test_emb
 
 def count_missing_basic(data):

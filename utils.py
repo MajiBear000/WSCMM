@@ -8,9 +8,8 @@ from transformers import RobertaTokenizer, RobertaModel
 
 def read_config(path):
     config_path = os.path.join(path, 'config.json')
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-        print(config)
+    config = load_json(config_path)
+    print(config)
     return config
 
 def get_model(path):
@@ -66,6 +65,13 @@ def tokenize_by_index(tokenizer, seq, index=None, no_flat=False):
         tokens_ids = sum(tokens_ids, [])  # return a flat ids list
     return tokens_ids
 
+def save_json(data, path):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False)
 
+def load_json(path):
+    with open(path, 'r') as f:
+        data = json.load(f)
+    return data
 
 
