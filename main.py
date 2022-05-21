@@ -6,6 +6,7 @@ from utils import (
         get_model,
         get_tokenizer,
         )
+from basic_extract import prepare_embedding
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,8 @@ def main():
 
     model = get_model(args.model_path)
     tokenizer = get_tokenizer(args.model_path)
+
+    prepare_embedding(model, tokenizer, data)
 
 if __name__ == '__main__':
     main()
