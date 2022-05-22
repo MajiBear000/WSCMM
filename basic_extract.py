@@ -91,7 +91,6 @@ def prepare_embedding(args, model, tokenizer, data):
             target_vec = outputs[0][0][0]
             
         test_emb.append([target_vec, test_vec, label])
-        break
     print('test emb loaded!')
     return test_emb
 
