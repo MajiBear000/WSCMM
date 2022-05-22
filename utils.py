@@ -2,6 +2,9 @@
 # transformers version 2.11.0
 import os
 import json
+import random
+import numpy as np
+import torch
 
 from transformers import RobertaTokenizer, RobertaModel
 #from transformers.models.bert.modeling_bert import RobertaModel
@@ -73,5 +76,11 @@ def load_json(path):
     with open(path, 'r') as f:
         data = json.load(f)
     return data
+
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
 
 

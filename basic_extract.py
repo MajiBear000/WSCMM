@@ -26,13 +26,17 @@ def basic_embedding(model, tokenizer, basic_train):
     basic_emb = {}
     for target in tqdm(basic_train.keys()):
         basic_train[target]['seq']=[]
+        basic_train[target]['idx']=[]
         for sentence, index in basic_train[target]['sam']:
             basic_train[target]['seq'].append(sentence)
             _, n_idx = tokenize_by_index(tokenizer, sentence, index)
+            basic_train[target]['idx'].append(n_idx)
+            '''
             if 'idx' not in basic_train[target].keys():
                 basic_train[target]['idx'] = np.mat(n_idx)
             else:
                 basic_train[target]['idx'] = np.vstack((basic_train[target]['idx'],np.array(n_idx)))
+            '''
     print('Start generate basic mean embedding...')
     for target in tqdm(basic_train.keys()):
         basic_emb[target] = []
@@ -69,7 +73,7 @@ def prepare_embedding(args, model, tokenizer, data):
         target = sample[0]
         sentence = sample[1].lower()
         index = sample[2]
-        label = str(sample[3])
+        label = int(sample[3])
 
         tokenized = tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
         _, ni = tokenize_by_index(tokenizer, sentence, index)
@@ -85,8 +89,9 @@ def prepare_embedding(args, model, tokenizer, data):
             with torch.no_grad():
                 outputs = model(**tokenized)
             target_vec = outputs[0][0][0]
-
+            
         test_emb.append([target_vec, test_vec, label])
+        break
     print('test emb loaded!')
     return test_emb
 
