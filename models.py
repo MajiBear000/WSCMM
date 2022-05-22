@@ -34,10 +34,10 @@ class ClassificationForBasicMean_Linear(nn.Module):
             'test_emb': A torch.LongTensor of shape [batch, hidden_size(768)],
                 embedding of contextual target from UVA testing set, generate by pre-trained models.
         """
-        contrast_input = torch.cat([basic_emb, test_emb],dim=1) #(N,D)
-        contrast_input = self.dropout(contrast_input)
-        logits = self.classifier(contrast_input)
-        logits = self.logsoftmax(logits)
+        contrast_input = torch.cat([basic_emb, test_emb],dim=1).float() #(N,D)
+        contrast_input = self.dropout(contrast_input).float()
+        logits = self.classifier(contrast_input).float()
+        logits = self.logsoftmax(logits).float()
 
         if labels is not None:
             loss_fct = nn.NLLLoss()

@@ -73,7 +73,7 @@ def prepare_embedding(args, model, tokenizer, data):
         target = sample[0]
         sentence = sample[1].lower()
         index = sample[2]
-        label = int(sample[3])
+        label = torch.tensor(int(sample[3]))
 
         tokenized = tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
         _, ni = tokenize_by_index(tokenizer, sentence, index)
@@ -90,7 +90,7 @@ def prepare_embedding(args, model, tokenizer, data):
                 outputs = model(**tokenized)
             target_vec = outputs[0][0][0]
             
-        test_emb.append([target_vec, test_vec, label])
+        test_emb.append([torch.tensor(target_vec), torch.tensor(test_vec), label])
     print('test emb loaded!')
     return test_emb
 
