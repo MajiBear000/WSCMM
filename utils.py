@@ -77,10 +77,19 @@ def load_json(path):
         data = json.load(f)
     return data
 
+def save_pth(data, path):
+    torch.save(data, path) #use tensor.clone() save pure data without relation
+
+def load_pth(path):
+    data = torch.load(path)
+    return data
+
 def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+
+    
 
 

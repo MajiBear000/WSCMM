@@ -26,9 +26,9 @@ def main():
     tokenizer = get_tokenizer(args.model_path)
     model = ClassificationForBasicMean_Linear(args, roberta.config)
 
-    test_emb = prepare_embedding(args, roberta, tokenizer, data)
+    train_emb = prepare_embedding(args, roberta, tokenizer, data)
 
-    train(args, test_emb, model)
+    train(args, train_emb, model)
     
 if __name__ == '__main__':
     main()

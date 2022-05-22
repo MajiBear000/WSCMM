@@ -4,7 +4,7 @@ from os.path import exists
 import numpy as np
 import torch
 from tqdm import tqdm
-from utils import tokenize_by_index, save_json, load_json
+from utils import tokenize_by_index, save_json, load_json, save_pth, load_pth
 
 def target_extract(train_set, basic=True):
     basic_train = {}
@@ -56,7 +56,7 @@ def basic_embedding(model, tokenizer, basic_train):
         
     return basic_emb
 
-def prepare_embedding(args, model, tokenizer, data):
+def prepare_embedding(args, model, tokenizer, data, val=False):
     basic_emb_path = os.path.join(args.trainset_dir, 'basic_emb.json')
 
     if not exists(basic_emb_path):
@@ -66,10 +66,16 @@ def prepare_embedding(args, model, tokenizer, data):
     else:
         basic_emb = load_json(basic_emb_path)
         print('Succeed load basic mean embedding:',len(basic_emb))
+    
+    data_emb_path = os.path.join(args.testset_dir, 'data_emb.pth') if val else os.path.join(args.trainset_dir, 'data_emb.pth')
+    if exists(data_emb_path):
+        data_emb = load_pth(data_emb_path)
+        return data_emb
 
-    test_emb = []
+    data_emb = []
     print('Start output test embedding...')
-    for sample in tqdm(data['test']):
+    context_data = data['test'] if val else data['train']
+    for sample in tqdm(context_data):
         target = sample[0]
         sentence = sample[1].lower()
         index = sample[2]
@@ -79,20 +85,21 @@ def prepare_embedding(args, model, tokenizer, data):
         _, ni = tokenize_by_index(tokenizer, sentence, index)
         with torch.no_grad():
             outputs = model(**tokenized)
-        test_vec = outputs[0][0][ni[0]]
+        con_vec = outputs[0][0][ni[0]]
         
         if target in basic_emb.keys():
             vec = np.array(basic_emb[target])
-            target_vec = torch.from_numpy(vec)
+            basic_vec = torch.from_numpy(vec)
         else:
             tokenized = tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
             with torch.no_grad():
                 outputs = model(**tokenized)
-            target_vec = outputs[0][0][0]
+            basic_vec = outputs[0][0][0]
             
-        test_emb.append([torch.tensor(target_vec), torch.tensor(test_vec), label])
+        data_emb.append([torch.tensor(basic_vec), torch.tensor(con_vec), label])
+    save_pth(data_emb, data_emb_path)
     print('test emb loaded!')
-    return test_emb
+    return data_emb
 
 def count_missing_basic(data):
     basic_train = target_extract(data['train'])
