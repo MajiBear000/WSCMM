@@ -32,6 +32,8 @@ class parse_args:
         # Training and Model Configs
         parser.add_argument('--drop_ratio', type=float, default=0.2,
                             help='ratio of dropout layer.')
+        parser.add_argument('--bias', type=float, default=0.2,
+                            help='bias of meodel.')
         parser.add_argument('--num_train_epochs', type=int, default=3,
                             help='number of set training epochs.')
         parser.add_argument('--train_batch_size', type=int, default=32,
