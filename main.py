@@ -26,10 +26,13 @@ def main():
     tokenizer = get_tokenizer(args.model_path)
     model = ClassificationForBasicMean_Linear(args, roberta.config)
 
-    train_emb = prepare_embedding(args, roberta, tokenizer, data)
-    test_emb = prepare_embedding(args, roberta, tokenizer, data, val=True)
+    train_emb = prepare_embedding(args, roberta, tokenizer, data, 'train')
+    test_emb = prepare_embedding(args, roberta, tokenizer, data, 'test')
+    val_emb = prepare_embedding(args, roberta, tokenizer, data, 'val')
+    test_emb_kn = prepare_embedding(args, roberta, tokenizer, data, 'test_kn')
+    val_emb_kn = prepare_embedding(args, roberta, tokenizer, data, 'val_kn')
 
-    train(args, train_emb, test_emb, model)
+    train(args, train_emb, test_emb_kn, model)
     
 if __name__ == '__main__':
     main()

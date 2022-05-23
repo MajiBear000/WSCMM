@@ -19,6 +19,8 @@ class parse_args:
                             help='dir of training set.')
         parser.add_argument('--testset_dir', type=str, default='data/VUA20',
                             help='dir of test set.')
+        parser.add_argument('--valset_dir', type=str, default='data/VUA18',
+                            help='dir of val set.')
         parser.add_argument('--model_path', type=str, default='senseCL/checkpoint/checkpoint-1200',
                             help='path for pretrained model.')
         parser.add_argument('--seed', type=int, default=42,

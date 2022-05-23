@@ -1,16 +1,19 @@
 import csv
 import os
+import re
 
 def load_data(args):
     dataset = {'train':None,'test':None,'val':None}
     train_path = os.path.join(args.trainset_dir, 'train.tsv')
     test_path = os.path.join(args.testset_dir, 'test.tsv')
+    val_path = os.path.join(args.valset_dir, 'val.tsv')
     if args.dataset_name == 'vua18' or 'vua20':
-        dataset['train'] = read_vua(train_path)
-        dataset['test'] = read_vua(test_path)
+        dataset['train'] = read_vua(train_path, re.search('VUA18', train_path))
+        dataset['test'] = read_vua(test_path, re.search('VUA18', test_path))
+        dataset['val'] = read_vua(val_path, re.search('VUA18', val_path))
     return dataset
 
-def read_vua(file_path, no_fgpos=False):
+def read_vua(file_path, no_fgpos=None):
     dataset = []
     with open(file_path, encoding='utf8') as f:
         lines = csv.reader(f, delimiter='\t')

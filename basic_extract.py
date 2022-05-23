@@ -56,7 +56,7 @@ def basic_embedding(model, tokenizer, basic_train):
         
     return basic_emb
 
-def prepare_embedding(args, model, tokenizer, data, val=False):
+def prepare_embedding(args, model, tokenizer, data, opt=None):
     basic_emb_path = os.path.join(args.trainset_dir, 'basic_emb.json')
 
     if not exists(basic_emb_path):
@@ -67,7 +67,7 @@ def prepare_embedding(args, model, tokenizer, data, val=False):
         basic_emb = load_json(basic_emb_path)
         print('Succeed load basic mean embedding:',len(basic_emb))
     
-    data_emb_path = os.path.join(args.testset_dir, 'test_emb.pth') if val else os.path.join(args.trainset_dir, 'data_emb.pth')
+    context_data, data_emb_path = trace_data(args, data, opt)
     if exists(data_emb_path):
         data_emb = load_pth(data_emb_path)
         print(f'data emb loaded: {len(data_emb)}')
@@ -75,7 +75,6 @@ def prepare_embedding(args, model, tokenizer, data, val=False):
 
     data_emb = []
     print('Start output test embedding...')
-    context_data = data['test'] if val else data['train']
     for sample in tqdm(context_data):
         target = sample[0]
         sentence = sample[1].lower()
@@ -91,16 +90,40 @@ def prepare_embedding(args, model, tokenizer, data, val=False):
         if target in basic_emb.keys():
             vec = np.array(basic_emb[target])
             basic_vec = torch.from_numpy(vec)
-        else:
+        elif opt in ['train', 'test', 'val']:
             tokenized = tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
             with torch.no_grad():
                 outputs = model(**tokenized)
             basic_vec = outputs[0][0][0]
+        else:
+            continue
             
         data_emb.append([basic_vec, con_vec, label])
     save_pth(data_emb, data_emb_path)
     print('test emb loaded!')
     return data_emb
+
+def trace_data(args, data, opt):
+    if opt is None:
+        print("ERROR: give a dataset you want to trace")
+        exit()
+    elif opt == 'train':
+        path = os.path.join(args.trainset_dir, 'data_emb.pth')
+        data = data['train']
+    elif opt == 'test':
+        path = os.path.join(args.testset_dir, 'test_emb.pth')
+        data = data['test']
+    elif opt == 'val':
+        path = os.path.join(args.valset_dir, 'val_emb.pth')
+        data = data['val']
+        
+    elif opt == 'test_kn':      
+        path = os.path.join(args.testset_dir, 'test_emb_kn.pth')
+        data = data['test']
+    elif opt == 'val_kn':      
+        path = os.path.join(args.valset_dir, 'val_emb_kn.pth')
+        data = data['val']
+    return data, path
 
 def count_missing_basic(data):
     basic_train = target_extract(data['train'])

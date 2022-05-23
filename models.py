@@ -26,7 +26,7 @@ class ClassificationForBasicMean_Linear(DNN):
         self.config = config
         self.dropout = nn.Dropout(args.drop_ratio)
 
-        self.hidden_1 = nn.Linear(768*2, 768)
+        self.hidden_1 = nn.Linear(768, 768)
         self.classifier = nn.Linear(768, num_labels)
 
         self._init_weights(self.hidden_1)
@@ -50,7 +50,8 @@ class ClassificationForBasicMean_Linear(DNN):
             'test_emb': A torch.LongTensor of shape [batch, hidden_size(768)],
                 embedding of contextual target from UVA testing set, generate by pre-trained models.
         """
-        contrast_input = torch.cat([basic_emb, test_emb],dim=1) #(N,D)
+        #contrast_input = torch.cat([basic_emb, test_emb],dim=1) #(N,D)
+        contrast_input = basic_emb - test_emb
         contrast_input = self.dropout(contrast_input)
         h_emb = self.hidden_1(contrast_input)
         h_emb = self.dropout(h_emb)
