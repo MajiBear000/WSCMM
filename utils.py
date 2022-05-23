@@ -4,6 +4,7 @@ import os
 import json
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 
 from sklearn.metrics import f1_score, precision_score, recall_score
@@ -105,14 +106,16 @@ def acc_and_f1(preds, labels):
         "f1": f1,
         "acc": acc,
     }
-    log_results(result)
     return result
 
 def compute_metrics(preds, labels):
     return acc_and_f1(preds, labels)
 
-def log_results(results):
-    print("*****Eval results*****")
+def log_results(results, val=False):
+    if val:
+        print("*****Validation results*****")
+    else:
+        print("*****Testing results*****")
     for key in results.keys():
         print(f" {key} = {results[key]}")
 
@@ -120,5 +123,15 @@ def output_param(model):
     for param in model.parameters():
         print(param.data)
         print(type(param.data), param.size())
-        
 
+
+def loss_plot(train_loss, dev_loss):
+    plt.plot(train_loss, label='Train loss')
+    plt.plot(dev_loss, label='Dev loss')
+
+    plt.title('Change in Loss Per Epoch')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+
+    plt.legend()
+    plt.show()  

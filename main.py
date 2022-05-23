@@ -8,10 +8,20 @@ from utils import (
         set_seed,
         )
 from basic_extract import prepare_embedding
-from trainer import train
+from trainer import Trainer
 from models import ClassificationForBasicMean_Linear
 
 logger = logging.getLogger(__name__)
+
+def get_embs(args, roberta, tokenizer, data):
+    train_emb = prepare_embedding(args, roberta, tokenizer, data, 'train')
+    if args.unk_emb:
+        test_emb = prepare_embedding(args, roberta, tokenizer, data, 'test')
+        val_emb = prepare_embedding(args, roberta, tokenizer, data, 'val')
+    else:
+        test_emb = prepare_embedding(args, roberta, tokenizer, data, 'test_kn')
+        val_emb = prepare_embedding(args, roberta, tokenizer, data, 'val_kn')
+    return {'train':train_emb, 'test':test_emb, 'val':val_emb}
 
 def main():
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO)
@@ -26,13 +36,12 @@ def main():
     tokenizer = get_tokenizer(args.model_path)
     model = ClassificationForBasicMean_Linear(args, roberta.config)
 
-    train_emb = prepare_embedding(args, roberta, tokenizer, data, 'train')
-    test_emb = prepare_embedding(args, roberta, tokenizer, data, 'test')
-    val_emb = prepare_embedding(args, roberta, tokenizer, data, 'val')
-    test_emb_kn = prepare_embedding(args, roberta, tokenizer, data, 'test_kn')
-    val_emb_kn = prepare_embedding(args, roberta, tokenizer, data, 'val_kn')
+    embs = get_embs(args, roberta, tokenizer, data)
+    
+    trainer = Trainer(args, embs['train'], embs['val'], model)
+    trainer.train()
 
-    train(args, train_emb, test_emb_kn, model)
+    trainer.evaluate(embs['test'])
     
 if __name__ == '__main__':
     main()
