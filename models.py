@@ -50,7 +50,7 @@ class ClassificationForBasicMean_Linear(DNN):
             'test_emb': A torch.LongTensor of shape [batch, hidden_size(768)],
                 embedding of contextual target from UVA testing set, generate by pre-trained models.
         """
-        contrast_input = torch.cat([basic_emb, test_emb],dim=1).float() #(N,D)
+        contrast_input = torch.cat([basic_emb, test_emb],dim=1) #(N,D)
         contrast_input = self.dropout(contrast_input)
         h_emb = self.hidden_1(contrast_input)
         h_emb = self.dropout(h_emb)
