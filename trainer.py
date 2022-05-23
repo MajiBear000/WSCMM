@@ -20,8 +20,8 @@ def train(args, train_data, test_data, model):
     train_sampler = RandomSampler(train_data)
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
 
-    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
-    optimizer = AdamW(model.parameters(), lr=args.lr, eps=args.adam_epsilon)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+    #optimizer = AdamW(model.parameters(), lr=args.lr, eps=args.adam_epsilon)
     device = args.device
     model.to(device)
     model.double()
