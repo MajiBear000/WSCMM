@@ -75,7 +75,7 @@ class parse_args:
         settings = vars(self.args)
         stamp_path = os.path.join('saves', self.args.stamp+'.txt')
         if not exists('saves'):
-            os.makedirs(stamp_path)
+            os.makedirs('saves')
         with open(stamp_path, 'w+') as f:
             for key in settings.keys():
                 f.write(key)
