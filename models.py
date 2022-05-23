@@ -39,8 +39,8 @@ class ClassificationForBasicMean_Linear(DNN):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-        #if isinstance(module, nn.Linear) and module.bias is not None:
-            #module.bias.data.fill_()
+        if isinstance(module, nn.Linear) and module.bias is not None:
+            module.bias.data.zero_()
 
     def forward(self, basic_emb, test_emb, labels=None):
         """
