@@ -2,7 +2,21 @@
 import torch
 import torch.nn as nn
 
-class ClassificationForBasicMean_Linear(nn.Module):
+class DNN(nn.Module):
+    def __init__(self):
+        """Initialize the model"""
+        super(DNN, self).__init__()
+        self.elu = nn.ELU()
+        self.tanh = nn.Tanh()
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+        
+        self.logsoftmax = nn.LogSoftmax(dim=1)
+
+    def forward(self):
+        return 0
+
+class ClassificationForBasicMean_Linear(DNN):
     """base model for Linear Classification"""
 
     def __init__(self, args, config, num_labels=2):
@@ -11,10 +25,11 @@ class ClassificationForBasicMean_Linear(nn.Module):
         self.num_labels = num_labels
         self.config = config
         self.dropout = nn.Dropout(args.drop_ratio)
-        self.tanh = nn.Tanh()
 
-        self.classifier = nn.Linear(768*2, num_labels)
-        self.logsoftmax = nn.LogSoftmax(dim=1)
+        self.hidden_1 = nn.Linear(768*2, 768)
+        self.classifier = nn.Linear(768, num_labels)
+
+        self._init_weights(self.hidden_1)
         self._init_weights(self.classifier)
 
     def _init_weights(self, module):
@@ -36,10 +51,13 @@ class ClassificationForBasicMean_Linear(nn.Module):
                 embedding of contextual target from UVA testing set, generate by pre-trained models.
         """
         contrast_input = torch.cat([basic_emb, test_emb],dim=1).float() #(N,D)
-        contrast_input = self.dropout(contrast_input).float()
-        logits = self.classifier(contrast_input).float()
-        logits = self.tanh(logits)
-        logits = self.logsoftmax(logits).float()
+        contrast_input = self.dropout(contrast_input)
+        h_emb = self.hidden_1(contrast_input)
+        h_emb = self.dropout(h_emb)
+        h_emb = self.relu(h_emb)
+        logits = self.classifier(h_emb)
+        logits = self.sigmoid(logits)
+        logits = self.logsoftmax(logits)
 
         if labels is not None:
             loss_fct = nn.NLLLoss()

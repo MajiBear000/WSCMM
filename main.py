@@ -27,8 +27,9 @@ def main():
     model = ClassificationForBasicMean_Linear(args, roberta.config)
 
     train_emb = prepare_embedding(args, roberta, tokenizer, data)
+    test_emb = prepare_embedding(args, roberta, tokenizer, data, val=True)
 
-    train(args, train_emb, model)
+    train(args, train_emb, test_emb, model)
     
 if __name__ == '__main__':
     main()

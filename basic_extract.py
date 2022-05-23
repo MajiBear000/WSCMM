@@ -67,9 +67,10 @@ def prepare_embedding(args, model, tokenizer, data, val=False):
         basic_emb = load_json(basic_emb_path)
         print('Succeed load basic mean embedding:',len(basic_emb))
     
-    data_emb_path = os.path.join(args.testset_dir, 'data_emb.pth') if val else os.path.join(args.trainset_dir, 'data_emb.pth')
+    data_emb_path = os.path.join(args.testset_dir, 'test_emb.pth') if val else os.path.join(args.trainset_dir, 'data_emb.pth')
     if exists(data_emb_path):
         data_emb = load_pth(data_emb_path)
+        print(f'data emb loaded: {len(data_emb)}')
         return data_emb
 
     data_emb = []

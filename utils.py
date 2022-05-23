@@ -6,6 +6,7 @@ import random
 import numpy as np
 import torch
 
+from sklearn.metrics import f1_score, precision_score, recall_score,
 from transformers import RobertaTokenizer, RobertaModel
 #from transformers.models.bert.modeling_bert import RobertaModel
 
@@ -89,7 +90,32 @@ def set_seed(args):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
-
     
+def simple_accuracy(preds, labels):
+    return (preds == labels).mean()
 
+def acc_and_f1(preds, labels):
+    acc = simple_accuracy(preds, labels)
+    f1 = f1_score(y_true=labels, y_pred=preds)
+    pre = precision_score(y_true=labels, y_pred=preds)
+    rec = recall_score(y_true=labels, y_pred=preds)
+    result = {
+        "precision": pre,
+        "recall": rec,
+        "f1": f1,
+        "acc": acc,
+    }
+    log_results(result)
+    return result
+
+def compute_metrics(preds, labels):
+    return acc_and_f1(preds, labels)
+
+def log_results(results):
+    print("*****Eval results*****")
+    for key in results.keys():
+        print(f" {key} = {results[key]}")
+
+
+        
 
