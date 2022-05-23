@@ -11,9 +11,10 @@ class ClassificationForBasicMean_Linear(nn.Module):
         self.num_labels = num_labels
         self.config = config
         self.dropout = nn.Dropout(args.drop_ratio)
+        self.tanh = nn.Tanh()
+
         self.classifier = nn.Linear(768*2, num_labels)
         self.logsoftmax = nn.LogSoftmax(dim=1)
-
         self._init_weights(self.classifier)
 
     def _init_weights(self, module):
@@ -37,6 +38,7 @@ class ClassificationForBasicMean_Linear(nn.Module):
         contrast_input = torch.cat([basic_emb, test_emb],dim=1).float() #(N,D)
         contrast_input = self.dropout(contrast_input).float()
         logits = self.classifier(contrast_input).float()
+        logits = self.tanh(logits)
         logits = self.logsoftmax(logits).float()
 
         if labels is not None:

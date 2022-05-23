@@ -96,7 +96,7 @@ def prepare_embedding(args, model, tokenizer, data, val=False):
                 outputs = model(**tokenized)
             basic_vec = outputs[0][0][0]
             
-        data_emb.append([torch.tensor(basic_vec), torch.tensor(con_vec), label])
+        data_emb.append([basic_vec, con_vec, label])
     save_pth(data_emb, data_emb_path)
     print('test emb loaded!')
     return data_emb
