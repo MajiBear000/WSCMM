@@ -125,13 +125,43 @@ def output_param(model):
         print(type(param.data), param.size())
 
 
-def loss_plot(train_loss, dev_loss):
+def loss_plot(args, train_loss, val_loss):
     plt.plot(train_loss, label='Train loss')
-    plt.plot(dev_loss, label='Dev loss')
+    plt.plot(val_loss, label='Dev loss')
 
     plt.title('Change in Loss Per Epoch')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
 
     plt.legend()
-    plt.show()  
+    plot_path = os.path.join(args.plot_dir, args.stamp+'_loss.png') 
+    plt.savefig(plot_path)
+
+def acc_plot(args, pre, rec, f1, acc):
+    plt.plot(pre, label='Precision')
+    plt.plot(rec, label='Recall')
+    plt.plot(f1, label='F1-score')
+    plt.plot(acc, label='Accuracy')
+
+    plt.title('Validation Metrics Per Epoch')
+    plt.xlabel('Epochs')
+    plt.ylabel('%')
+
+    plt.legend()
+    plot_path = os.path.join(args.plot_dir, args.stamp+'_metrix.png') 
+    plt.savefig(plot_path)
+
+def test_metrix_log(path, result):
+    with open(path, 'a+') as f:
+        f.write('\n')
+        for key in result:
+            f.write(key)
+            f.write(':  ')
+            f.write(str(result[key]))
+            f.write('\n')
+            
+
+
+
+
+    

@@ -1,4 +1,6 @@
 # -*- conding: utf-8 -*-
+import os
+from os.path import exists
 import tqdm
 import numpy as np
 import torch
@@ -7,7 +9,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from transformers import AdamW
 from tqdm import trange
-from utils import compute_metrics, output_param, log_results
+from utils import compute_metrics, output_param, log_results, loss_plot, acc_plot
 
 def get_input_from_batch(batch):
     inputs = {  'basic_emb': batch[0],
@@ -26,6 +28,10 @@ class Trainer(object):
         self.train_loss = []
         self.val_loss = []
         self.results = []
+        self.f1 = []
+        self.acc = []
+        self.pre = []
+        self.rec = []
         
         self.setup_train()
 
@@ -63,6 +69,10 @@ class Trainer(object):
             self.train_loss.append(tr_loss/(step+1))
 
             self.evaluate(self.val_data, val=True)
+        if not exists(self.args.plot_dir):
+            os.makedirs(self.args.plot_dir)
+        loss_plot(self.args, self.train_loss, self.val_loss)
+        acc_plot(self.args, self.pre, self.rec, self.f1, self.acc)
         #output_param(model)
         return self.train_loss, self.val_loss, self.results
 
@@ -93,9 +103,16 @@ class Trainer(object):
         result = compute_metrics(preds, out_label_ids)
         log_results(result, val)
         if val:
+            self.log_metrix(result)
             self.results.append(result)
             self.val_loss.append(t_loss/(step+1))
+        return result
 
+    def log_metrix(self, result):
+        self.f1.append(result['f1'])
+        self.acc.append(result['acc'])
+        self.pre.append(result['precision'])
+        self.rec.append(result['recall'])
     
 
 

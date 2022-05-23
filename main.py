@@ -1,4 +1,5 @@
 # -*- conding: utf-8 -*-
+import os
 import logging
 from main_config import parse_args
 from data_loader import load_data
@@ -6,6 +7,7 @@ from utils import (
         get_model,
         get_tokenizer,
         set_seed,
+        test_metrix_log,
         )
 from basic_extract import prepare_embedding
 from trainer import Trainer
@@ -41,7 +43,8 @@ def main():
     trainer = Trainer(args, embs['train'], embs['val'], model)
     trainer.train()
 
-    trainer.evaluate(embs['test'])
+    result = trainer.evaluate(embs['test'])
+    test_metrix_log(os.path.join('saves', args.stamp+'.txt'), result)
     
 if __name__ == '__main__':
     main()

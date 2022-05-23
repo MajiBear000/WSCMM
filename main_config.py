@@ -1,12 +1,16 @@
 # -*- conding: utf-8 -*-
 import os
+from os.path import exists
 import argparse
 import torch
+import time
 
 class parse_args:
     def __init__(self):
         self.args = self.init_parse()
         self.set_cuda()
+        
+        self.set_timestamp() # set a timestamp
         
     def init_parse(self):
         parser = argparse.ArgumentParser()
@@ -38,7 +42,7 @@ class parse_args:
                             help='ratio of dropout layer.')
         parser.add_argument('--bias', type=float, default=0.2,
                             help='bias of meodel.')
-        parser.add_argument('--epochs', type=int, default=3,
+        parser.add_argument('--epochs', type=int, default=100,
                             help='number of set training epochs.')
         parser.add_argument('--train_batch_size', type=int, default=32,
                             help='size of training batch.')
@@ -50,6 +54,10 @@ class parse_args:
                             help="Epsilon for Adam optimizer.")
         parser.add_argument("--max_grad_norm", default=1.0, type=float,
                             help="Max gradient norm.")
+
+        # Evaluating Configs
+        parser.add_argument('--plot_dir', type=str, default='saves/plots',
+                            help='dir of evaluation plots.')
         
         return parser.parse_args()
 
@@ -59,4 +67,23 @@ class parse_args:
         self.args.n_gpu = 1
         self.args.device = device
 
-        
+    def set_timestamp(self):
+        now = int(round(time.time()*1000))
+        now_str = time.strftime('%m-%d_%H:%M',time.localtime(now/1000)) # %Y-%m-%d %H:%M:%S '2017-11-07 16:47:14'
+        print(now_str)
+        self.args.stamp = now_str
+        settings = vars(self.args)
+        stamp_path = os.path.join('saves', self.args.stamp+'.txt')
+        if not exists('saves'):
+            os.makedirs(stamp_path)
+        with open(stamp_path, 'w+') as f:
+            for key in settings.keys():
+                f.write(key)
+                f.write(':  ')
+                f.write(str(settings[key]))
+                f.write('\n')
+                
+
+
+
+
