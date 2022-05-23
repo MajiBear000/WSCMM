@@ -56,7 +56,7 @@ class ClassificationForBasicMean_Linear(DNN):
         h_emb = self.dropout(h_emb)
         h_emb = self.relu(h_emb)
         logits = self.classifier(h_emb)
-        logits = self.sigmoid(logits)
+        logits = self.relu(logits)
         logits = self.logsoftmax(logits)
 
         if labels is not None:

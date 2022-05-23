@@ -42,6 +42,8 @@ class parse_args:
                             help='The initial learning rate for Adam.')
         parser.add_argument("--adam_epsilon", default=1e-8, type=float,
                             help="Epsilon for Adam optimizer.")
+        parser.add_argument("--max_grad_norm", default=1.0, type=float,
+                            help="Max gradient norm.")
         
         return parser.parse_args()
 
