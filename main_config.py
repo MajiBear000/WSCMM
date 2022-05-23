@@ -34,7 +34,7 @@ class parse_args:
                             help='ratio of dropout layer.')
         parser.add_argument('--bias', type=float, default=0.2,
                             help='bias of meodel.')
-        parser.add_argument('--num_train_epochs', type=int, default=3,
+        parser.add_argument('--epochs', type=int, default=3,
                             help='number of set training epochs.')
         parser.add_argument('--train_batch_size', type=int, default=32,
                             help='size of training batch.')

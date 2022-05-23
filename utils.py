@@ -116,6 +116,9 @@ def log_results(results):
     for key in results.keys():
         print(f" {key} = {results[key]}")
 
-
+def output_param(model):
+    for param in model.parameters():
+        print(param.data)
+        print(type(param.data), param.size())
         
 
