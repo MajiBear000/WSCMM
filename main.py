@@ -32,12 +32,11 @@ def main():
     logger.info(vars(args))
     set_seed(args)
 
-    data = load_data(args)
-
     roberta = get_model(args.model_path)
     tokenizer = get_tokenizer(args.model_path)
     model = ClassificationForBasicMean_Linear(args, roberta.config)
 
+    data = load_data(args)
     embs = get_embs(args, roberta, tokenizer, data)
     
     trainer = Trainer(args, embs['train'], embs['val'], model)

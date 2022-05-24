@@ -38,6 +38,8 @@ class parse_args:
 
 
         # Training and Model Configs
+        parser.add_argument('--con_emb', action='store_true',
+                            help='concatenate basic emb and context emb.')
         parser.add_argument('--drop_ratio', type=float, default=0.2,
                             help='ratio of dropout layer.')
         parser.add_argument('--bias', type=float, default=0.2,

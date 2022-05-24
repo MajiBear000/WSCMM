@@ -3,6 +3,7 @@ import os
 from os.path import exists
 import tqdm
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -71,8 +72,9 @@ class Trainer(object):
             self.evaluate(self.val_data, val=True)
         if not exists(self.args.plot_dir):
             os.makedirs(self.args.plot_dir)
-        loss_plot(self.args, self.train_loss, self.val_loss)
-        acc_plot(self.args, self.pre, self.rec, self.f1, self.acc)
+        self.log_plot()
+        #loss_plot(self.args, self.train_loss, self.val_loss)
+        #acc_plot(self.args, self.pre, self.rec, self.f1, self.acc)
         #output_param(model)
         return self.train_loss, self.val_loss, self.results
 
@@ -113,6 +115,30 @@ class Trainer(object):
         self.acc.append(result['acc'])
         self.pre.append(result['precision'])
         self.rec.append(result['recall'])
+
+    def log_plot(self):
+        plt.figure(figsize=(14,6))
+
+        plt.subplot(121)
+        plt.plot(self.train_loss, label='Train loss')
+        plt.plot(self.val_loss, label='Dev loss')
+        plt.title('Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+
+        plt.subplot(122)
+        plt.plot(self.pre, label='Precision')
+        plt.plot(self.rec, label='Recall')
+        plt.plot(self.f1, label='F1-score')
+        plt.plot(self.acc, label='Accuracy')
+        plt.title('Validation Metrics')
+        plt.xlabel('Epochs')
+        plt.ylabel('%')
+        plt.legend()
+        
+        self.plot_path = os.path.join(self.args.plot_dir, self.args.stamp+'_plot.png')
+        plt.savefig(self.plot_path)
     
 
 
