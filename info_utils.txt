@@ -1,0 +1,18 @@
+﻿# Utils Function Info
+1. read_config(path)   #读取pretrained model的config.json
+2. get_model(path)   #加载pretrained model
+3. get_tokenizer(path)   #加载pretrained model的tokenizer
+4. tokenize_by_index(tokenizer, seq, index=None, no_flat=False)   #tokenize seq根据split()得到的词序，可以返回index在ids中的位置
+5. save_json(data, path)   #保存dict数据到json文件
+6. load_json(path)   #从json文件加载数据
+7. save_pth(data, path)   #保存tensor数据到pth文件
+8. load_pth(path)   #从pth文件加载数据
+9. set_seed(args)   #根据预设seed设置随机种子
+10. simple_accuracy(preds, labels)   #返回accuracy
+11. compute_metrics(preds, labels)   #返回metrics
+12. log_results(results, val=False)   #os output results Information
+13. output_param(model)   #os输出模型的parameters
+14. loss_plot(args, train_loss, val_loss)   #记录loss变化曲线到图表with timestamp ***已集成到Trainer class***
+15. acc_plot(args, pre, rec, f1, acc)   #记录metrics变化曲线到图表with timestamp ***已集成到Trainer class***
+16. test_metrix_log(path, result)   #记录测试result到path指定txt文件夹
+17. check_index(sent, index, word)   #检查index是否准确定位到target word

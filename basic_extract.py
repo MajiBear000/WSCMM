@@ -19,7 +19,7 @@ def target_extract(train_set, basic=True):
             basic_train[target]['sam'].append([sentence, index])
         else:
             basic_train[target] = {'sam':[[sentence, index]]}
-
+    print(f'length: {len(basic_train)}')
     return basic_train
 
 def basic_embedding(model, tokenizer, basic_train):

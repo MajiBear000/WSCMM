@@ -1,3 +1,3 @@
 #!/bin/sh
 python main.py 
-python main.py --unk_emb 
+python main.py --ori_emb 

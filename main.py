@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def get_embs(args, roberta, tokenizer, data):
     train_emb = prepare_embedding(args, roberta, tokenizer, data, 'train')
-    if args.unk_emb:
+    if args.ori_emb:
         test_emb = prepare_embedding(args, roberta, tokenizer, data, 'test')
         val_emb = prepare_embedding(args, roberta, tokenizer, data, 'val')
     else:
