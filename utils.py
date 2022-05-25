@@ -63,7 +63,7 @@ def tokenize_by_index(tokenizer, seq, index=None, no_flat=False):
     if not index==None:
         i_s = 0     #start index of target word
         for i, ele in enumerate(tokens_ids):
-            i_e = i_s+len(ele)-1    #end index of target word
+            i_e = i_s+len(ele)    #end index of target word
             if i == index+1:
                 if not no_flat:
                     tokens_ids = sum(tokens_ids, [])  # return a flat ids list
