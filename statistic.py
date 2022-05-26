@@ -55,6 +55,10 @@ def vua_reform(data, new=False):
         r_data.append([target, sentence, w_index, label, pos, fgpos, index])
     return r_data
 
+def count_train_miss(basic_train, train):
+    for data in train:
+        if data[]
+
 def main():
     data = {}
     path = 'data/VUA18'
@@ -73,7 +77,9 @@ def main():
 
     print('*****Filt Unkown Data*****')
     basic_train = load_json(data_emb_path)
-
+    
+    train_kn = filt_unk(basic_train, data['train'])
+    save_tsv(train_kn, train_path.replace('.tsv', '_kn.tsv'), ['index','label','sentence','POS','FGPOS','w_index'])
     test_kn = filt_unk(basic_train, data['test'])
     save_tsv(test_kn, test_path.replace('.tsv', '_kn.tsv'), ['index','label','sentence','POS','FGPOS','w_index'])
     val_kn = filt_unk(basic_train, data['val'])
@@ -82,12 +88,14 @@ def main():
     print('*****Count Missing Basic Mean*****')
     count_missing_basic(data)
     count_missing_basic({'train':data['train'], 'test':data['val']})
+    count_missing_basic({'train':data['train'], 'test':data['train']})
 
     print('*****Extract Target Mean*****')
     data['train_basic'] = target_extract(data['train'])
     data['test_basic'] = target_extract(data['test'], basic=False)
     data['val_basic'] = target_extract(data['val'], basic=False)
-    
+
+    print('*****Trainset Missing Target*****')
 
 if __name__ == '__main__':
     main()

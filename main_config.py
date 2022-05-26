@@ -38,17 +38,20 @@ class parse_args:
 
 
         # Training and Model Configs
+        parser.add_argument('--model_name', type=str, default='roberta',
+                            choices=['linear','roberta'],
+                            help='name of model.')
         parser.add_argument('--con_emb', action='store_true',
                             help='concatenate basic emb and context emb.')
         parser.add_argument('--drop_ratio', type=float, default=0.2,
                             help='ratio of dropout layer.')
         parser.add_argument('--bias', type=float, default=0.2,
                             help='bias of meodel.')
-        parser.add_argument('--epochs', type=int, default=100,
+        parser.add_argument('--epochs', type=int, default=3,
                             help='number of set training epochs.')
-        parser.add_argument('--train_batch_size', type=int, default=32,
+        parser.add_argument('--train_batch_size', type=int, default=16,
                             help='size of training batch.')
-        parser.add_argument('--test_batch_size', type=int, default=64,
+        parser.add_argument('--test_batch_size', type=int, default=32,
                             help='size of testing batch.')
         parser.add_argument('--lr', type=float, default=1e-3,
                             help='The initial learning rate for Adam.')

@@ -11,12 +11,23 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from transformers import AdamW
 from tqdm import trange
 from utils import compute_metrics, output_param, log_results, loss_plot, acc_plot
+from torch.nn.utils.rnn import pad_sequence
 
-def get_input_from_batch(batch):
-    inputs = {  'basic_emb': batch[0],
-                'test_emb': batch[1],
-        }
-    labels = batch[2]
+def get_input_from_batch(args, batch):
+    if args.model_name == 'roberta':
+        inputs = {  'basic_ids': batch[0],
+                    'basic_attention': batch[1],
+                    'basic_mask': batch[2],
+                    'con_ids': batch[3],
+                    'con_attention': batch[4],
+                    'con_mask': batch[5],
+                    }
+        labels = batch[6]
+    elif args.model_name == 'linear':
+        inputs = {  'basic_emb': batch[0],
+                    'test_emb': batch[1],
+            }
+        labels = batch[2]
     return inputs, labels
 
 class Trainer(object):
@@ -39,7 +50,7 @@ class Trainer(object):
     def setup_train(self):
         """ set up a trainer """
         train_sampler = RandomSampler(self.train_data)
-        self.train_dataloader = DataLoader(self.train_data, sampler=train_sampler, batch_size=self.args.train_batch_size)
+        self.train_dataloader = DataLoader(self.train_data, sampler=train_sampler, batch_size=self.args.train_batch_size, collate_fn=self.collate_fn)
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.args.lr, momentum=0.9)
         #self.optimizer = AdamW(model.parameters(), lr=args.lr, eps=args.adam_epsilon)
         self.device = self.args.device
@@ -55,7 +66,7 @@ class Trainer(object):
             for step, batch in enumerate(self.train_dataloader):
                 self.model.train()
                 batch = tuple(t.to(self.device) for t in batch)
-                inputs, labels = get_input_from_batch(batch)
+                inputs, labels = get_input_from_batch(self.args, batch)
                 logits  = self.model(**inputs)
             
                 loss = self.loss_func(logits, labels)
@@ -82,13 +93,13 @@ class Trainer(object):
     def evaluate(self, test_data, val=False):
         """ set up evaluater """
         test_sampler = SequentialSampler(test_data)
-        test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=self.args.test_batch_size)
+        test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=self.args.test_batch_size, collate_fn=self.collate_fn)
         
         preds = None
         t_loss = 0
         for step, batch in enumerate(test_dataloader):
             batch = tuple(t.to(self.device) for t in batch)
-            inputs, labels = get_input_from_batch(batch)
+            inputs, labels = get_input_from_batch(self.args, batch)
             with torch.no_grad():
                 logits = self.model(**inputs)
                 loss = self.loss_func(logits, labels)
@@ -139,12 +150,19 @@ class Trainer(object):
         
         self.plot_path = os.path.join(self.args.plot_dir, self.args.stamp+'_plot.png')
         plt.savefig(self.plot_path)
-    
 
+    def collate_fn(self, batch):
+        basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels = zip(*batch)
 
+        basic_ids = pad_sequence(basic_ids, batch_first=True, padding_value=0)
+        basic_attention = pad_sequence(basic_attention, batch_first=True, padding_value=0)
+        basic_mask = pad_sequence(basic_mask, batch_first=True, padding_value=0)
+        con_ids = pad_sequence(con_ids, batch_first=True, padding_value=0)
+        con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
+        con_mask = pad_sequence(con_mask, batch_first=True, padding_value=0)
+        labels = torch.tensor([t for t in labels])
 
-
-
+        return basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels
 
 
 
