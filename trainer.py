@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from transformers import AdamW
-from tqdm import trange
+from tqdm import trange, tqdm
 from utils import compute_metrics, output_param, log_results, loss_plot, acc_plot
 from torch.nn.utils.rnn import pad_sequence
 
@@ -70,16 +70,19 @@ class Trainer(object):
                 logits  = self.model(**inputs)
             
                 loss = self.loss_func(logits, labels)
-                tr_loss += loss.item()
+                if self.args.n_gpu>1:
+                    loss = loss.mean()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
 
                 self.optimizer.step()
+                self.optimizer.zero_grad()
+                tr_loss += loss.item()
 
                 if (step+1) % 1000 == 0:
                     print(f"Train loss for {int((step+1)/1000)}000 step: {tr_loss}")
             self.train_loss.append(tr_loss/(step+1))
-
+            tr_loss=0
             self.evaluate(self.val_data, val=True)
         if not exists(self.args.plot_dir):
             os.makedirs(self.args.plot_dir)

@@ -67,7 +67,7 @@ class parse_args:
         return parser.parse_args()
 
     def set_cuda(self):
-        os.environ["CUDA_VISIBLE_DEVICES"] = self.args.cuda_id
+        os.environ["CUDA_VISIBLE_DEVICES"] = '0'#self.args.cuda_id
         device = torch.device("cuda" if torch.cuda.is_available() and not self.args.no_cuda else "cpu")
         self.args.n_gpu = 1
         self.args.device = device

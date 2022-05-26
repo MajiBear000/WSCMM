@@ -4,6 +4,7 @@ from tqdm import tqdm
 from data_loader import read_vua
 from basic_extract import count_missing_basic, target_extract
 from utils import load_json
+import matplotlib.pyplot as plt
 import csv
 
 def filt_unk(basic_train, data):
@@ -55,9 +56,18 @@ def vua_reform(data, new=False):
         r_data.append([target, sentence, w_index, label, pos, fgpos, index])
     return r_data
 
-def count_train_miss(basic_train, train):
-    for data in train:
-        if data[]
+def log_target_distribute(basic_train):
+    data_len=[]
+    for key in basic_train.keys():
+        data_len.append(len(basic_train[key]['sam']))
+    data_len.sort(reverse=True)
+    plt.plot(data_len,label='num')
+    plt.title('Sorted Basic Mean Sample Size')
+    plt.xlabel('target')
+    plt.ylabel('samples')
+    plot_path = 'data/VUA20/basic_len.png'
+    plt.savefig(plot_path)
+    return 0
 
 def main():
     data = {}
@@ -95,7 +105,8 @@ def main():
     data['test_basic'] = target_extract(data['test'], basic=False)
     data['val_basic'] = target_extract(data['val'], basic=False)
 
-    print('*****Trainset Missing Target*****')
+    print('*****Trainset Missing Target Log*****')
+    log_target_distribute(target_extract(data['train']))
 
 if __name__ == '__main__':
     main()

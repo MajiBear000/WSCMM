@@ -54,6 +54,10 @@ def prepare_ids(args, tokenizer, basic_train, data):
             _, basic_ni = tokenize_by_index(tokenizer, basic_sen, basic_idx)
             basic_mask = torch.zeros(basic_token['input_ids'][0].shape)
             basic_mask[basic_ni[0]]=1
+        '''
+        if (len(tokenized_input)) > 64:
+            break
+        '''
         tokenized_input.append([basic_token['input_ids'][0], basic_token['attention_mask'][0],
                                 basic_mask, con_token['input_ids'][0], con_token['attention_mask'][0], con_mask, label])
     log_skip_words(skip_words)
