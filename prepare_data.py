@@ -56,7 +56,6 @@ def prepare_ids(args, tokenizer, basic_train, data):
             basic_mask[basic_ni[0]]=1
         tokenized_input.append([basic_token['input_ids'][0], basic_token['attention_mask'][0],
                                 basic_mask, con_token['input_ids'][0], con_token['attention_mask'][0], con_mask, label])
-        break
     log_skip_words(skip_words)
     print(f"=============================Finished length: {len(tokenized_input)}!=============================")
     return tokenized_input
