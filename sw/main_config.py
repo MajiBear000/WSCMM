@@ -43,6 +43,7 @@ class parse_args:
                             help='name of model.')
         parser.add_argument('--con_emb', action='store_true',
                             help='concatenate basic emb and context emb.')
+        
         parser.add_argument('--drop_ratio', type=float, default=0.2,
                             help='ratio of dropout layer.')
         parser.add_argument('--bias', type=float, default=0.2,
@@ -67,7 +68,7 @@ class parse_args:
         return parser.parse_args()
 
     def set_cuda(self):
-        os.environ["CUDA_VISIBLE_DEVICES"] = '0'#self.args.cuda_id
+        os.environ["CUDA_VISIBLE_DEVICES"] = '1'#self.args.cuda_id
         device = torch.device("cuda" if torch.cuda.is_available() and not self.args.no_cuda else "cpu")
         self.args.n_gpu = 1
         self.args.device = device

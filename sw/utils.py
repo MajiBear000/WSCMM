@@ -53,7 +53,7 @@ def get_tokenizer(path):
 
 # 4
 def tokenize_by_index(tokenizer, seq, index=None, no_flat=False):
-    seq = seq.split()   # seq already being splited
+    seq = seq.split(' ')   # seq already being splited
     tokens_ids = [[tokenizer.bos_token_id]]
     for i,ele in enumerate(seq):
         if i:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(ele, add_prefix_space = True)))
@@ -174,7 +174,7 @@ def test_metrix_log(path, result):
 
 # 17
 def check_index(sent, index, word):
-    seq = sent.split()
+    seq = sent.split(' ')
     iw = seq[index]
     if not iw==word:
         print("====incorrect index===")

@@ -60,6 +60,8 @@ def log_target_distribute(basic_train):
     data_len=[]
     for key in basic_train.keys():
         data_len.append(len(basic_train[key]['sam']))
+        if len(basic_train[key]['sam'])>1000:
+            print(f"{len(basic_train[key]['sam'])} : {key}")
     data_len.sort(reverse=True)
     plt.plot(data_len,label='num')
     plt.title('Sorted Basic Mean Sample Size')
@@ -71,6 +73,7 @@ def log_target_distribute(basic_train):
 
 def main():
     data = {}
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
     path = 'data/VUA18'
     val_path = 'data/VUA18/val.tsv'
     test_path = 'data/VUA20/test.tsv'

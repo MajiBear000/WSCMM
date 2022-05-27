@@ -13,8 +13,8 @@ from tqdm import trange, tqdm
 from utils import compute_metrics, output_param, log_results, loss_plot, acc_plot
 from torch.nn.utils.rnn import pad_sequence
 
-def get_input_from_batch(args, batch):
-    if args.model_name == 'roberta':
+def get_input_from_batch(model_name, batch):
+    if model_name == 'roberta':
         inputs = {  'basic_ids': batch[0],
                     'basic_attention': batch[1],
                     'basic_mask': batch[2],
@@ -23,15 +23,43 @@ def get_input_from_batch(args, batch):
                     'con_mask': batch[5],
                     }
         labels = batch[6]
-    elif args.model_name == 'linear':
+    elif model_name == 'linear':
         inputs = {  'basic_emb': batch[0],
                     'test_emb': batch[1],
             }
         labels = batch[2]
     return inputs, labels
 
+def get_collate_fn(model_name):
+    if model_name == 'roberta':
+        return collate_fn_roberta
+
+
+def collate_fn_roberta(self, batch):
+    basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels = zip(*batch)
+
+    basic_ids = pad_sequence(basic_ids, batch_first=True, padding_value=0)
+    basic_attention = pad_sequence(basic_attention, batch_first=True, padding_value=0)
+    basic_mask = pad_sequence(basic_mask, batch_first=True, padding_value=0)
+    con_ids = pad_sequence(con_ids, batch_first=True, padding_value=0)
+    con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
+    con_mask = pad_sequence(con_mask, batch_first=True, padding_value=0)
+    labels = torch.tensor([t for t in labels])
+
+    return basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels
+
 class Trainer(object):
-    """ Trainer """
+    """
+        Trainer
+            args.model_name : name of the model used to train.
+            args.device : the device where model trained on.
+            args.lr : learning rate.
+            args.adam_epsilon : Epsilon for Adam optimizer.
+            args.max_grad_norm : Max gradient norm.
+            args.plot_dir : evaluation plot save dir.
+            args.stamp : timestamp used to identify saved results.
+            
+    """
     def __init__(self, args, train_data, val_data, model):
         self.args = args
         self.train_data = train_data
@@ -46,6 +74,7 @@ class Trainer(object):
         self.rec = []
         
         self.setup_train()
+        self.collate_fn = get_collate_fn(self.args.model_name)
 
     def setup_train(self):
         """ set up a trainer """
@@ -66,7 +95,7 @@ class Trainer(object):
             for step, batch in enumerate(self.train_dataloader):
                 self.model.train()
                 batch = tuple(t.to(self.device) for t in batch)
-                inputs, labels = get_input_from_batch(self.args, batch)
+                inputs, labels = get_input_from_batch(self.args.model_name, batch)
                 logits  = self.model(**inputs)
             
                 loss = self.loss_func(logits, labels)
@@ -102,7 +131,7 @@ class Trainer(object):
         t_loss = 0
         for step, batch in enumerate(test_dataloader):
             batch = tuple(t.to(self.device) for t in batch)
-            inputs, labels = get_input_from_batch(self.args, batch)
+            inputs, labels = get_input_from_batch(self.args.model_name, batch)
             with torch.no_grad():
                 logits = self.model(**inputs)
                 loss = self.loss_func(logits, labels)
@@ -131,6 +160,7 @@ class Trainer(object):
         self.rec.append(result['recall'])
 
     def log_plot(self):
+        '''log evaluation plot to plot save dir'''
         plt.figure(figsize=(14,6))
 
         plt.subplot(121)
@@ -153,19 +183,6 @@ class Trainer(object):
         
         self.plot_path = os.path.join(self.args.plot_dir, self.args.stamp+'_plot.png')
         plt.savefig(self.plot_path)
-
-    def collate_fn(self, batch):
-        basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels = zip(*batch)
-
-        basic_ids = pad_sequence(basic_ids, batch_first=True, padding_value=0)
-        basic_attention = pad_sequence(basic_attention, batch_first=True, padding_value=0)
-        basic_mask = pad_sequence(basic_mask, batch_first=True, padding_value=0)
-        con_ids = pad_sequence(con_ids, batch_first=True, padding_value=0)
-        con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
-        con_mask = pad_sequence(con_mask, batch_first=True, padding_value=0)
-        labels = torch.tensor([t for t in labels])
-
-        return basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels
 
 
 

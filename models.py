@@ -27,13 +27,16 @@ class DNN(nn.Module):
         return 0
 
 class ClassificationForBasicMean_Linear(DNN):
-    """base model for Linear Classification"""
+    """
+        base model for Linear Classification
+            args.dropout: ratio for dropout layer
+    """
 
-    def __init__(self, args, config, num_labels=2):
+    def __init__(self, args, roberta, num_labels=2):
         """Initialize the model"""
         super(ClassificationForBasicMean_Linear, self).__init__()
         self.num_labels = num_labels
-        self.config = config
+        self.config = roberta.config
         self.dropout = nn.Dropout(args.drop_ratio)
 
         self.hidden_1 = nn.Linear(768*2, 768) if args.con_emb else nn.Linear(768, 768)
@@ -67,15 +70,18 @@ class ClassificationForBasicMean_Linear(DNN):
         return logits
 
 class ClassificationForBasicMean_RoBERTa(DNN):
-    """base model for RoBERTa Classification"""
+    """
+        base model for RoBERTa Classification
+            args.drop_ratio: ratio for dropout layer
+    """
 
-    def __init__(self, args, roberta, config, num_labels=2):
+    def __init__(self, args, roberta, num_labels=2):
         super(ClassificationForBasicMean_RoBERTa, self).__init__()
         self.num_labels = num_labels
         self.roberta = roberta
-        self.config = config
+        self.config = roberta.config
         self.dropout = nn.Dropout(args.drop_ratio)
-        self.classifier = nn.Linear(config.hidden_size*2, num_labels)
+        self.classifier = nn.Linear(self.config.hidden_size*2, num_labels)
 
         self._init_weights(self.classifier)
 

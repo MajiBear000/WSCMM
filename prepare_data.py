@@ -16,6 +16,16 @@ def get_ids(args, tokenizer, raw_data):
 
     return {'train':tokenized_train, 'test':tokenized_test, 'val':tokenized_test}
 
+def get_embs(args, roberta, tokenizer, data):
+    train_emb = prepare_embedding(args, roberta, tokenizer, data, 'train')
+    if args.ori_emb:
+        test_emb = prepare_embedding(args, roberta, tokenizer, data, 'test')
+        val_emb = prepare_embedding(args, roberta, tokenizer, data, 'val')
+    else:
+        test_emb = prepare_embedding(args, roberta, tokenizer, data, 'test_kn')
+        val_emb = prepare_embedding(args, roberta, tokenizer, data, 'val_kn')
+    return {'train':train_emb, 'test':test_emb, 'val':val_emb}
+
 def prepare_ids(args, tokenizer, basic_train, data):
     tokenized_input = []
     skip_words = []
