@@ -27,7 +27,7 @@ class parse_args:
                             help='dir of val set.')
         parser.add_argument('--ori_emb', action='store_true',
                             help='input if contain unknown words.')
-        parser.add_argument('--model_path', type=str, default='senseCL/checkpoint/checkpoint-1200',
+        parser.add_argument('--model_path', type=str, default='models/senseCL/checkpoint/checkpoint-1200',
                             help='path for pretrained model.')
         parser.add_argument('--seed', type=int, default=42,
                             help='random seed for initialization.')
@@ -50,9 +50,9 @@ class parse_args:
                             help='bias of meodel.')
         parser.add_argument('--epochs', type=int, default=3,
                             help='number of set training epochs.')
-        parser.add_argument('--train_batch_size', type=int, default=16,
+        parser.add_argument('--train_batch_size', type=int, default=32,
                             help='size of training batch.')
-        parser.add_argument('--test_batch_size', type=int, default=32,
+        parser.add_argument('--test_batch_size', type=int, default=64,
                             help='size of testing batch.')
         parser.add_argument('--lr', type=float, default=1e-3,
                             help='The initial learning rate for Adam.')
