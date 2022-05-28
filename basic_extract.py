@@ -1,10 +1,12 @@
 # -*- conding: utf-8 -*-
 import os
+
 from os.path import exists
 import numpy as np
 import torch
 from tqdm import tqdm
-from utils import tokenize_by_index, save_json, load_json, save_pth, load_pth
+
+from sw.utils import tokenize_by_index, save_json, load_json, save_pth, load_pth
 
 def target_extract(train_set, basic=True):
     basic_train = {}

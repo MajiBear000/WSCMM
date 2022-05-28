@@ -1,11 +1,13 @@
 # -*- conding: utf-8 -*-
 import os
+import csv
+
+import matplotlib.pyplot as plt
 from tqdm import tqdm
+
+from sw.utils import load_json, save_tsv, load_tsv
 from data_loader import read_vua
 from basic_extract import count_missing_basic, target_extract
-from utils import load_json
-import matplotlib.pyplot as plt
-import csv
 
 def filt_unk(basic_train, data):
     data_kn = []
@@ -20,23 +22,6 @@ def filt_unk(basic_train, data):
         if target in basic_train.keys():
             data_kn.append([index, label, sentence, pos, fgpos, w_index])
     return data_kn
-
-def save_tsv(data, path, headline=None):
-    print(f'{path} len: {len(data)}')
-    with open(path, 'w') as f:
-        writer = csv.writer(f, delimiter='\t')
-        if headline:
-            writer.writerow(headline)
-        writer.writerows(data)
-        
-def load_tsv(path):
-    data=[]
-    with open(path) as f:
-        lines = csv.reader(f, delimiter='\t')
-        next(lines)
-        for line in lines:
-            data.append(list(line))
-    return data
 
 def vua_reform(data, new=False):
     r_data=[]

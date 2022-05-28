@@ -3,6 +3,8 @@
 import os
 import json
 import random
+import logging
+
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -10,6 +12,8 @@ import torch
 from sklearn.metrics import f1_score, precision_score, recall_score
 from transformers import RobertaTokenizer, RobertaModel
 #from transformers.models.bert.modeling_bert import RobertaModel
+
+logger = logging.getLogger(__name__)
 
 # 1
 def read_config(path):
@@ -122,11 +126,11 @@ def compute_metrics(preds, labels):
 # 12
 def log_results(results, val=False):
     if val:
-        print("*****Validation results*****")
+        logger.info("*****Validation results*****")
     else:
-        print("*****Testing results*****")
+        logger.info("*****Testing results*****")
     for key in results.keys():
-        print(f" {key} = {results[key]}")
+        logger.info(f" {key} = {results[key]}")
 
 # 13
 def output_param(model):
@@ -179,6 +183,22 @@ def check_index(sent, index, word):
     if not iw==word:
         print("====incorrect index===")
 
+def save_tsv(data, path, headline=None):
+    print(f'{path} len: {len(data)}')
+    with open(path, 'w') as f:
+        writer = csv.writer(f, delimiter='\t')
+        if headline:
+            writer.writerow(headline)
+        writer.writerows(data)
+        
+def load_tsv(path):
+    data=[]
+    with open(path) as f:
+        lines = csv.reader(f, delimiter='\t')
+        next(lines)
+        for line in lines:
+            data.append(list(line))
+    return data
 
 
     

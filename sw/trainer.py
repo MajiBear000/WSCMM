@@ -1,17 +1,23 @@
 # -*- conding: utf-8 -*-
 import os
-from os.path import exists
+import logging
 import tqdm
+import sys
+sys.path.append("..")
+
+from os.path import exists
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from transformers import AdamW
+
 from tqdm import trange, tqdm
-from utils import compute_metrics, output_param, log_results, loss_plot, acc_plot
-from torch.nn.utils.rnn import pad_sequence
+from sw.utils import compute_metrics, output_param, log_results, loss_plot, acc_plot
+
+logger = logging.getLogger(__name__)
+
 
 def get_input_from_batch(model_name, batch):
     if model_name == 'roberta':
@@ -30,24 +36,6 @@ def get_input_from_batch(model_name, batch):
         labels = batch[2]
     return inputs, labels
 
-def get_collate_fn(model_name):
-    if model_name == 'roberta':
-        return collate_fn_roberta
-
-
-def collate_fn_roberta(self, batch):
-    basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels = zip(*batch)
-
-    basic_ids = pad_sequence(basic_ids, batch_first=True, padding_value=0)
-    basic_attention = pad_sequence(basic_attention, batch_first=True, padding_value=0)
-    basic_mask = pad_sequence(basic_mask, batch_first=True, padding_value=0)
-    con_ids = pad_sequence(con_ids, batch_first=True, padding_value=0)
-    con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
-    con_mask = pad_sequence(con_mask, batch_first=True, padding_value=0)
-    labels = torch.tensor([t for t in labels])
-
-    return basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels
-
 class Trainer(object):
     """
         Trainer
@@ -60,27 +48,26 @@ class Trainer(object):
             args.stamp : timestamp used to identify saved results.
             
     """
-    def __init__(self, args, train_data, val_data, model):
+    def __init__(self, args, data, model):
         self.args = args
-        self.train_data = train_data
-        self.val_data = val_data
+        self.train_data = data['train']
+        self.test_data = data['test']
+        self.val_data = data['val']
         self.model = model
-        self.train_loss = []
-        self.val_loss = []
-        self.results = []
-        self.f1 = []
-        self.acc = []
-        self.pre = []
-        self.rec = []
+        self._train_loss = []
+        self._val_loss = []
+        self._results = []
+        self._f1 = []
+        self._acc = []
+        self._pre = []
+        self._rec = []
         
-        self.setup_train()
-        self.collate_fn = get_collate_fn(self.args.model_name)
+        self._setup_train()
 
-    def setup_train(self):
+    def _setup_train(self):
         """ set up a trainer """
-        train_sampler = RandomSampler(self.train_data)
-        self.train_dataloader = DataLoader(self.train_data, sampler=train_sampler, batch_size=self.args.train_batch_size, collate_fn=self.collate_fn)
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.args.lr, momentum=0.9)
+        self.optimizer = torch.optim.SGD(self.model.parameters(),
+                                         lr=self.args.lr, momentum=0.9)
         #self.optimizer = AdamW(model.parameters(), lr=args.lr, eps=args.adam_epsilon)
         self.device = self.args.device
         self.model.to(self.device)
@@ -89,48 +76,48 @@ class Trainer(object):
     
     def train(self):
         # Train
-        print("******************** Running training **********************")
+        logger.info("***** Running training *****")
         for epoch in trange(int(self.args.epochs), desc="Epoch"):
             tr_loss = 0
-            for step, batch in enumerate(self.train_dataloader):
+            for step, batch in enumerate(self.train_data):
                 self.model.train()
-                batch = tuple(t.to(self.device) for t in batch)
-                inputs, labels = get_input_from_batch(self.args.model_name, batch)
+                inputs, labels = get_input_from_batch(self.args.model_name,
+                                                      batch)
                 logits  = self.model(**inputs)
             
                 loss = self.loss_func(logits, labels)
                 if self.args.n_gpu>1:
                     loss = loss.mean()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(),
+                                               self.args.max_grad_norm)
 
                 self.optimizer.step()
                 self.optimizer.zero_grad()
                 tr_loss += loss.item()
 
                 if (step+1) % 1000 == 0:
-                    print(f"Train loss for {int((step+1)/1000)}000 step: {tr_loss}")
-            self.train_loss.append(tr_loss/(step+1))
-            tr_loss=0
-            self.evaluate(self.val_data, val=True)
+                    logger.info(f"Train loss for {int((step+1)/1000)}000 step: {tr_loss}")
+            self._train_loss.append(tr_loss/(step+1))
+            if self.val_data is None:
+                self.evaluate(val=True)
+            else:
+                self.evaluate(test_data=self.val_data, val=True)
         if not exists(self.args.plot_dir):
             os.makedirs(self.args.plot_dir)
-        self.log_plot()
-        #loss_plot(self.args, self.train_loss, self.val_loss)
-        #acc_plot(self.args, self.pre, self.rec, self.f1, self.acc)
+        self._log_plot()
         #output_param(model)
-        return self.train_loss, self.val_loss, self.results
+        return self._train_loss, self._val_loss, self._results
 
 
-    def evaluate(self, test_data, val=False):
-        """ set up evaluater """
-        test_sampler = SequentialSampler(test_data)
-        test_dataloader = DataLoader(test_data, sampler=test_sampler, batch_size=self.args.test_batch_size, collate_fn=self.collate_fn)
+    def evaluate(self, test_data=None, val=False):
+        if test_data is None:
+            test_data = self.test_data
         
         preds = None
         t_loss = 0
-        for step, batch in enumerate(test_dataloader):
-            batch = tuple(t.to(self.device) for t in batch)
+        for step, batch in enumerate(test_data):
+            #batch = tuple(t.to(self.device) for t in batch)
             inputs, labels = get_input_from_batch(self.args.model_name, batch)
             with torch.no_grad():
                 logits = self.model(**inputs)
@@ -141,48 +128,52 @@ class Trainer(object):
                     preds = logits.detach().cpu().numpy()
                     out_label_ids = labels.detach().cpu().numpy()
                 else:
-                    preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-                    out_label_ids = np.append(out_label_ids, labels.detach().cpu().numpy(), axis=0)
+                    preds = np.append(preds, logits.detach().cpu().numpy(),
+                                      axis=0)
+                    out_label_ids = np.append(out_label_ids,
+                                              labels.detach().cpu().numpy(),
+                                              axis=0)
         
         preds = np.argmax(preds, axis=1)
         result = compute_metrics(preds, out_label_ids)
         log_results(result, val)
         if val:
-            self.log_metrix(result)
-            self.results.append(result)
-            self.val_loss.append(t_loss/(step+1))
+            self._log_metrix(result)
+            self._results.append(result)
+            self._val_loss.append(t_loss/(step+1))
         return result
 
-    def log_metrix(self, result):
-        self.f1.append(result['f1'])
-        self.acc.append(result['acc'])
-        self.pre.append(result['precision'])
-        self.rec.append(result['recall'])
+    def _log_metrix(self, result):
+        self._f1.append(result['f1'])
+        self._acc.append(result['acc'])
+        self._pre.append(result['precision'])
+        self._rec.append(result['recall'])
 
-    def log_plot(self):
+    def _log_plot(self):
         '''log evaluation plot to plot save dir'''
         plt.figure(figsize=(14,6))
 
         plt.subplot(121)
-        plt.plot(self.train_loss, label='Train loss')
-        plt.plot(self.val_loss, label='Dev loss')
+        plt.plot(self._train_loss, label='Train loss')
+        plt.plot(self._val_loss, label='Dev loss')
         plt.title('Loss')
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.legend()
 
         plt.subplot(122)
-        plt.plot(self.pre, label='Precision')
-        plt.plot(self.rec, label='Recall')
-        plt.plot(self.f1, label='F1-score')
-        plt.plot(self.acc, label='Accuracy')
+        plt.plot(self._pre, label='Precision')
+        plt.plot(self._rec, label='Recall')
+        plt.plot(self._f1, label='F1-score')
+        plt.plot(self._acc, label='Accuracy')
         plt.title('Validation Metrics')
         plt.xlabel('Epochs')
         plt.ylabel('%')
         plt.legend()
         
-        self.plot_path = os.path.join(self.args.plot_dir, self.args.stamp+'_plot.png')
-        plt.savefig(self.plot_path)
+        self._plot_path = os.path.join(self.args.plot_dir,
+                                      self.args.stamp+'_plot.png')
+        plt.savefig(self._plot_path)
 
 
 

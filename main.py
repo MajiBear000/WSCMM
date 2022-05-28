@@ -1,29 +1,29 @@
 # -*- conding: utf-8 -*-
 import os
 import logging
+
+import sys
+sys.path.append("..")
+import test
 from sw.main_config import parse_args
-from data_loader import load_data
-from sw.utils import (
-        get_model,
-        get_tokenizer,
-        set_seed,
-        test_metrix_log,
-        )
-from prepare_data import get_ids, get_embs
+from sw.utils import get_model, get_tokenizer, set_seed, test_metrix_log
 from sw.trainer import Trainer
+from processor import prepare_data
+from data_loader import load_data
 from models import ClassificationForBasicMean_Linear, ClassificationForBasicMean_RoBERTa
 
 logger = logging.getLogger(__name__)
 
 def get_trainer(args, roberta, tokenizer, raw_data):
+    processor = prepare_data(args, raw_data)
     if args.model_name=='linear':
-        data = get_embs(args, roberta, tokenizer, raw_data)
-        model = ClassificationForBasicMean_Linear(args, roberta)
-        trainer = Trainer(args, data['train'], data['val'], model)
+        data = processor.get_embs(roberta, tokenizer)
+        model = ClassificationForBasicMean_Linear(roberta, drop_ratio=args.drop_ratio)
+        trainer = Trainer(args, data, model)
     elif args.model_name=='roberta':
-        data = get_ids(args, tokenizer, raw_data)
-        model = ClassificationForBasicMean_RoBERTa(args, roberta)
-        trainer = Trainer(args, data['train'], data['val'], model)
+        data = processor.get_ids(tokenizer)
+        model = ClassificationForBasicMean_RoBERTa(roberta, drop_ratio=args.drop_ratio)
+        trainer = Trainer(args, data, model)
     return data, trainer, model
     
 def main():
@@ -35,8 +35,10 @@ def main():
 
     roberta = get_model(args.model_path)
     tokenizer = get_tokenizer(args.model_path)
-
+    logger.info('***** Model Load Success *****')
+    
     raw_data = load_data(args)
+    logger.info('***** Data Load Success *****')
     
     data, trainer, _ = get_trainer(args, roberta, tokenizer, raw_data)
     

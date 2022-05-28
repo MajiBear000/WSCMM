@@ -32,15 +32,15 @@ class ClassificationForBasicMean_Linear(DNN):
             args.dropout: ratio for dropout layer
     """
 
-    def __init__(self, args, roberta, num_labels=2):
+    def __init__(self, roberta, num_labels=2, drop_ratio=0.2):
         """Initialize the model"""
         super(ClassificationForBasicMean_Linear, self).__init__()
         self.num_labels = num_labels
         self.config = roberta.config
         self.dropout = nn.Dropout(args.drop_ratio)
 
-        self.hidden_1 = nn.Linear(768*2, 768) if args.con_emb else nn.Linear(768, 768)
-        self.classifier = nn.Linear(768, num_labels)
+        self.hidden_1 = nn.Linear(self.config.hidden_size*2, self.config.hidden_size) if args.con_emb else nn.Linear(self.config.hidden_size, self.config.hidden_size)
+        self.classifier = nn.Linear(self.config.hidden_size, num_labels)
 
         self._init_weights(self.hidden_1)
         self._init_weights(self.classifier)
@@ -75,12 +75,12 @@ class ClassificationForBasicMean_RoBERTa(DNN):
             args.drop_ratio: ratio for dropout layer
     """
 
-    def __init__(self, args, roberta, num_labels=2):
+    def __init__(self, roberta, num_labels=2, drop_ratio=0.2):
         super(ClassificationForBasicMean_RoBERTa, self).__init__()
         self.num_labels = num_labels
         self.roberta = roberta
         self.config = roberta.config
-        self.dropout = nn.Dropout(args.drop_ratio)
+        self.dropout = nn.Dropout(drop_ratio)
         self.classifier = nn.Linear(self.config.hidden_size*2, num_labels)
 
         self._init_weights(self.classifier)

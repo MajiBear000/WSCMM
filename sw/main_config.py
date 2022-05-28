@@ -87,8 +87,7 @@ class parse_args:
                 f.write(key)
                 f.write(':  ')
                 f.write(str(settings[key]))
-                f.write('\n')
-                
+                f.write('\n')     
 
 
 
