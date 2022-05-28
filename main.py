@@ -19,11 +19,11 @@ def get_trainer(args, roberta, tokenizer, raw_data):
     if args.model_name=='linear':
         data = processor.get_embs(roberta, tokenizer)
         model = ClassificationForBasicMean_Linear(roberta, drop_ratio=args.drop_ratio)
-        trainer = Trainer(args, data, model)
     elif args.model_name=='roberta':
         data = processor.get_ids(tokenizer)
         model = ClassificationForBasicMean_RoBERTa(roberta, drop_ratio=args.drop_ratio)
-        trainer = Trainer(args, data, model)
+    model.to(args.device)
+    trainer = Trainer(args, data, model)
     return data, trainer, model
     
 def main():

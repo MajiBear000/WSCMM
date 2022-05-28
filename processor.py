@@ -1,18 +1,17 @@
 # -*- conding: utf-8 -*-
 import os
 import random
-import spacy
 import torch
 import logging
 
+from os.path import exists
 from tqdm import tqdm
 import numpy as np
-from nltk.corpus import wordnet as wn
 from torch.utils.data import BatchSampler, RandomSampler, SequentialSampler, IterableDataset
 from torch.nn.utils.rnn import pad_sequence
 
-from basic_extract import target_extract
-from sw.utils import tokenize_by_index
+from basic_extract import target_extract, DefaultBasic
+from sw.utils import tokenize_by_index, save_json, load_json, save_pth, load_pth
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +41,10 @@ class prepare_data(object):
             test_emb = prepare_embedding(args, roberta, tokenizer, raw_data, 'test_kn')
             val_emb = prepare_embedding(args, roberta, tokenizer, raw_data, 'val_kn')
         '''
+        
+        self.data['train'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'train')
+        self.data['test'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'test')
+        self.data['val'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'val')
         return {'train':train_emb, 'test':test_emb, 'val':val_emb}
     
     def _log_skip_words(self, path, skip_words):
@@ -57,36 +60,13 @@ class prepare_data(object):
                 f.write('\n') 
 
 
-class DefaultBasic:
-    def __init__(self):
-        self.nlp = spacy.load('en_core_web_sm', disable=["parser", "ner"])
-
-    def __call__(self, word):
-        sent = None
-        index = None
-        if len(wn.synsets(word))==0:
-            return None, None
-        syn = wn.synsets(word)[0]
-        lemmas = syn.lemmas()
-        examples = syn.examples()
-        if not examples: # Means there is no example sentence in wordnet
-            return None, None
-        doc = self.nlp(examples[0])
-        for lemma in lemmas:
-            for idx, t in enumerate(doc):
-                if lemma.name() == t.lemma_:
-                    index = idx
-                    sent = [token.text for token in doc]
-                    break
-            else:
-                continue
-            break
-        return sent, index
-
-
 class Processor(IterableDataset):
-    def __init__(self):
-        pass
+    def __init__(self, args, tokenizer, raw_data, type_='test'):
+        self.args = args
+        self.tokenizer = tokenizer
+        self.raw_data = raw_data[type_]
+        self.skip_words = []
+        self._batch_size = args.train_batch_size if type_=='train' else args.test_batch_size
 
     def __iter__(self):
         raise ValueError("No __iter__ func in Processor has been declared!")
@@ -101,24 +81,139 @@ class Processor(IterableDataset):
             return SequentialSampler
 
 
+class BasicEmbsProcessor(Processor):
+    '''
+        Process and Load data for ClassificationForBasicMean_Linear Model
+        args.(trainset/teatset/valset)_dir : 
+        args.model_name : name of model
+        args.device : index of which device used
+        args.ori_emb : True if contain unknown words
+    '''
+    def __init__(self, args, model, tokenizer, basic_train, raw_data, type_='test', basicer=DefaultBasic()):
+        super(BasicEmbsProcessor, self).__init__(args, tokenizer, raw_data, type_)
+        self.model = model
+        self.basic_train = basic_train
+        self._basicer = basicer
+        self._basic_emb = {}
+        self.emb_input = []
+
+        self._basic_embedding()
+        self._emb_path = self._trace_data(type_)
+        self._prepare_embs(type_)
+        self._sampler = self._return_sampler(type_)
+        self._batch_sampler = BatchSampler(self._sampler(self.tokenized_input), self._batch_size, False)
+        self._max_steps = len(self._batch_sampler)
+
+    def _basic_embedding(self):
+        _basic_emb_path = os.path.join(self.args.trainset_dir, 'basic_emb.json')
+
+        if not exists(_basic_emb_path):
+            for target in tqdm(self.basic_train.keys()):
+                self.basic_train[target]['seq']=[]
+                self.basic_train[target]['idx']=[]
+                for sentence, index in self.basic_train[target]['sam']:
+                    self.basic_train[target]['seq'].append(sentence)
+                    _, ni = tokenize_by_index(self.tokenizer, sentence, index)
+                    self.basic_train[target]['idx'].append(ni)
+            logger.info('Start generate basic mean embedding...')
+            for target in tqdm(self.basic_train.keys()):
+                t_size = len(self.basic_train[target]['seq'])
+                for i, seq in enumerate(self.basic_train[target]['seq']):
+                    tokenized = self.tokenizer(seq,padding=True,truncation=True,max_length=512,return_tensors="pt")
+                    with torch.no_grad():
+                        outputs = self.model(**tokenized)
+                
+                    if i ==0 :
+                        vec = outputs[0][0][self.basic_train[target]['idx'][0][0]]/t_size
+                    else:
+                        vec += outputs[0][0][self.basic_train[target]['idx'][i][0]]/t_size #[last_hidden_state][batch][index][768]
+                
+                self._basic_emb[target] = vec.cpu().numpy().tolist()
+            logger.info('basic mean embedding Generated!')
+            save_json(self._basic_emb, _basic_emb_path)
+        else:
+            self._basic_emb = load_json(_basic_emb_path)
+            logger.info('Succeed load basic mean embedding:',len(self._basic_emb))
+
+    def _trace_data(opt):
+        if opt is None:
+            logger.warning("ERROR: give a dataset you want to trace")
+            exit()
+        elif opt == 'train':
+            path = os.path.join(args.trainset_dir, 'data_emb.pth')
+        elif opt == 'test':
+            path = os.path.join(args.testset_dir, 'test_emb.pth')
+        elif opt == 'val':
+            path = os.path.join(args.valset_dir, 'val_emb.pth')
+        
+        elif opt == 'test_kn':      
+            path = os.path.join(args.testset_dir, 'test_emb_kn.pth')
+        elif opt == 'val_kn':      
+            path = os.path.join(args.valset_dir, 'val_emb_kn.pth')
+        return path
+
+    def _prepare_embs(self, opt):
+        if exists(self._emb_path):
+            self.emb_input = load_pth(self._emb_path)
+            logger.info(f'data emb loaded: {len(data_emb)}')
+
+        logger.info('Start load input embedding...')
+        for sample in tqdm(self.raw_data):
+            target = sample[0]
+            sentence = sample[1].lower()
+            index = sample[2]
+            label = torch.tensor(int(sample[3]))
+
+            tokenized = self.tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
+            _, ni = tokenize_by_index(self.tokenizer, sentence, index)
+            with torch.no_grad():
+                outputs = self.model(**tokenized)
+            con_vec = outputs[0][0][ni[0]]
+        
+            if target in basic_emb.keys():
+                vec = np.array(basic_emb[target])
+                basic_vec = torch.from_numpy(vec)
+            elif opt in ['train', 'test', 'val']:
+                tokenized = tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
+                with torch.no_grad():
+                    outputs = model(**tokenized)
+                basic_vec = outputs[0][0][0]
+            else:
+                continue
+            
+            self.emb_input.append([basic_vec, con_vec, label])
+        save_pth(self.emb_input, self._emb_path)
+        logger.info(f'data emb loaded and saved: {len(data_emb)}')
+
+    def _sample_batch(self, idxs):
+        batch = []
+        for i in idxs:
+            sample = self.emb_input[i]
+            batch.append(sample)
+        return zip(*batch)
+    
+    def __iter__(self):
+        for idxs in self._batch_sampler:
+            batch = self._sample_batch(idxs)
+            batch = tuple(t.to(self.args.device) for t in batch)
+            yield batch
+
+    def __len__(self):
+        return self._max_steps
+
+
 class BasicIdsProcessor(Processor):
     '''
-        args.max_staps :
-        args.model_name :
-        args.device :
-        args.ori_emb :
+        Process and Load data for ClassificationForBasicMean_Roberta Model
+        args.model_name : name of model
+        args.device : index of which device used
+        args.ori_emb : True if contain unknown words
     '''
     def __init__(self, args, tokenizer, basic_train, raw_data, type_='test', basicer=DefaultBasic()):
-        self.args = args
-        self.tokenizer = tokenizer
+        super(BasicIdsProcessor, self).__init__(args, tokenizer, raw_data, type_)
         self.basic_train = basic_train
-        self.raw_data = raw_data[type_]
-        
-        self.tokenized_input = []
-        self.skip_words = []
-        
         self._basicer = basicer
-        self._batch_size = args.train_batch_size if type_=='train' else args.test_batch_size
+        self.tokenized_input = []
         
         self._prepare_ids()
         self._sampler = self._return_sampler(type_)

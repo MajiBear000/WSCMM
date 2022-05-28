@@ -1,13 +1,16 @@
 # -*- conding: utf-8 -*-
 import os
 import csv
+import logging
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 from sw.utils import load_json, save_tsv, load_tsv
-from data_loader import read_vua
+from data_loader import _read_vua
 from basic_extract import count_missing_basic, target_extract
+
+logger = logging.getLogger(__name__)
 
 def filt_unk(basic_train, data):
     data_kn = []
@@ -56,6 +59,16 @@ def log_target_distribute(basic_train):
     plt.savefig(plot_path)
     return 0
 
+def check_tokenizer(data):
+    count = 0
+    for key in data.keys():
+        for sample in data[key]:
+            seq = sample[1]
+            if not seq.split()==seq.split(' '):
+                logger.info(seq)
+                count += 1
+    logger.info(f'********{count}***********')        
+
 def main():
     data = {}
     os.environ["CUDA_VISIBLE_DEVICES"] = '1'
@@ -65,7 +78,7 @@ def main():
     train_path = 'data/VUA20/train.tsv'
     data_emb_path = 'data/VUA20/basic_emb.json'
 
-    print('*****Load VUA Data*****')
+    logger.info('*****Load VUA Data*****')
     raw_train = load_tsv(train_path)
     raw_test = load_tsv(test_path)
     raw_val = load_tsv(val_path)
@@ -73,7 +86,10 @@ def main():
     data['test'] = vua_reform(raw_test, new=True)
     data['val'] = vua_reform(raw_val)
 
-    print('*****Filt Unkown Data*****')
+    logger.info('***** Check Split Works *****')
+    check_tokenizer(data)
+    '''
+    logger.info('*****Filt Unkown Data*****')
     basic_train = load_json(data_emb_path)
     
     train_kn = filt_unk(basic_train, data['train'])
@@ -83,18 +99,18 @@ def main():
     val_kn = filt_unk(basic_train, data['val'])
     save_tsv(val_kn, val_path.replace('.tsv', '_kn.tsv'), ['index','label','sentence','POS','FGPOS','w_index'])
 
-    print('*****Count Missing Basic Mean*****')
+    logger.info('*****Count Missing Basic Mean*****')
     count_missing_basic(data)
     count_missing_basic({'train':data['train'], 'test':data['val']})
     count_missing_basic({'train':data['train'], 'test':data['train']})
 
-    print('*****Extract Target Mean*****')
+    logger.info('*****Extract Target Mean*****')
     data['train_basic'] = target_extract(data['train'])
     data['test_basic'] = target_extract(data['test'], basic=False)
     data['val_basic'] = target_extract(data['val'], basic=False)
 
-    print('*****Trainset Missing Target Log*****')
+    logger.info('*****Trainset Missing Target Log*****')
     log_target_distribute(target_extract(data['train']))
-
+    '''
 if __name__ == '__main__':
     main()

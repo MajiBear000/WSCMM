@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from transformers import AdamW
 
 from tqdm import trange, tqdm
-from sw.utils import compute_metrics, output_param, log_results, loss_plot, acc_plot
+from sw.utils import compute_metrics, output_param, log_results
 
 logger = logging.getLogger(__name__)
 

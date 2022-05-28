@@ -1,12 +1,11 @@
 # -*- conding: utf-8 -*-
 import os
 
-from os.path import exists
 import numpy as np
 import torch
 from tqdm import tqdm
-
-from sw.utils import tokenize_by_index, save_json, load_json, save_pth, load_pth
+import spacy
+from nltk.corpus import wordnet as wn
 
 def target_extract(train_set, basic=True):
     basic_train = {}
@@ -23,7 +22,7 @@ def target_extract(train_set, basic=True):
             basic_train[target] = {'sam':[[sentence, index]]}
     print(f'length: {len(basic_train)}')
     return basic_train
-
+'''
 def basic_embedding(model, tokenizer, basic_train):
     basic_emb = {}
     for target in tqdm(basic_train.keys()):
@@ -33,12 +32,6 @@ def basic_embedding(model, tokenizer, basic_train):
             basic_train[target]['seq'].append(sentence)
             _, n_idx = tokenize_by_index(tokenizer, sentence, index)
             basic_train[target]['idx'].append(n_idx)
-            '''
-            if 'idx' not in basic_train[target].keys():
-                basic_train[target]['idx'] = np.mat(n_idx)
-            else:
-                basic_train[target]['idx'] = np.vstack((basic_train[target]['idx'],np.array(n_idx)))
-            '''
     print('Start generate basic mean embedding...')
     for target in tqdm(basic_train.keys()):
         basic_emb[target] = []
@@ -126,7 +119,7 @@ def trace_data(args, data, opt):
         path = os.path.join(args.valset_dir, 'val_emb_kn.pth')
         data = data['val']
     return data, path
-
+'''
 def count_missing_basic(data):
     basic_train = target_extract(data['train'])
     basic_test = target_extract(data['test'], basic=False)
@@ -143,3 +136,31 @@ def check_index(sent, index, word):
     iw = seq[index]
     if not iw==word:
         print("====incorrect index===")
+
+        
+class DefaultBasic:
+    def __init__(self):
+        self.nlp = spacy.load('en_core_web_sm', disable=["parser", "ner"])
+
+    def __call__(self, word):
+        sent = None
+        index = None
+        if len(wn.synsets(word))==0:
+            return None, None
+        syn = wn.synsets(word)[0]
+        lemmas = syn.lemmas()
+        examples = syn.examples()
+        if not examples: # Means there is no example sentence in wordnet
+            return None, None
+        doc = self.nlp(examples[0])
+        for lemma in lemmas:
+            for idx, t in enumerate(doc):
+                if lemma.name() == t.lemma_:
+                    index = idx
+                    sent = [token.text for token in doc]
+                    break
+            else:
+                continue
+            break
+        return sent, index
+
