@@ -313,18 +313,11 @@ class MelbertProcessor(Processor):
     def _prepare_ids(self):
         logger.info('************ MelBERT Data Processor ***************')
         for sample in tqdm(self.raw_data):
-            '''
             target = sample[0]
             sentence = sample[1].lower()
             index = sample[2]
             label = torch.tensor(int(sample[3]))
             pos = sample[4]
-            '''
-            target = 'king'
-            sentence = "I'm the, 'king of the, world!"
-            index = 2
-            label = torch.tensor(1)
-            pos = 'ADJ'
 
             # get tokens of context and target #
             con_ids_attetion = self.tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
@@ -334,6 +327,8 @@ class MelbertProcessor(Processor):
             con_mask = torch.zeros(con_attention.shape)
             con_mask[con_ni[0]:con_ni[1]]=1
             token_type_ids = con_mask
+            if not self.tokenizer.convert_tokens_to_ids(con_tokens)==_:
+                print('*********** Token Split Error! ***********')
             
             # POS tag adding #
             pad_len=1
@@ -341,20 +336,11 @@ class MelbertProcessor(Processor):
                 pad_len = len(con_tokens)
                 pos_token = self.tokenizer.tokenize(pos)
                 con_tokens += pos_token + [self.tokenizer.sep_token]
-                print('pos con_tokens: ', con_tokens, len(con_tokens))
                 pad_len = len(con_tokens) - pad_len
-                print('pad_len:', pad_len)
                 padding = (0, pad_len)
-                print('con_attention: ', con_attention, con_attention.shape)
                 con_attention = F.pad(con_attention, padding, value=1)
-                print('con_attention: ', con_attention, con_attention.shape)
                 con_mask = F.pad(con_mask, padding, value=0)
-                print('con_mask: ', con_mask, con_mask.shape)
-                token_type_ids = F.pad(token_type_ids, padding, value=3)
-                print('token_type_ids: ', token_type_ids, token_type_ids.shape)
-                
-            if not self.tokenizer.convert_tokens_to_ids(con_tokens)==_:
-                print('*********** Token Split Error! ***********')
+                token_type_ids = F.pad(token_type_ids, padding, value=3)     
 
             # set local content #
             if self.args.use_local_context:
@@ -373,30 +359,22 @@ class MelbertProcessor(Processor):
             else:
                 token_type_ids[con_ni[0]:con_ni[1]]=1
 
-
             # get tokens of isolated target #
             isolate_ids_attetion = self.tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
             isolate_tokens = self.tokenizer.convert_ids_to_tokens(isolate_ids_attetion['input_ids'][0])
             isolate_attention = isolate_ids_attetion['attention_mask'][0]
             isolate_mask = torch.zeros(isolate_attention.shape)
             isolate_mask[1:-1]=1
-            print('isolate_tokens: ', isolate_tokens)
-            print('isolate_mask: ', isolate_mask)
+
+            # convert tokens to ids #
+            con_ids = self.tokenizer.convert_tokens_to_ids(con_tokens)
+            con_ids = torch.tensor(con_ids, dtype=torch.long)
+            isolate_ids = self.tokenizer.convert_tokens_to_ids(isolate_tokens)
+            isolate_ids = torch.tensor(isolate_ids, dtype=torch.long)
             
             # break if (len(self.tokenized_input)) > 64
-            print(con_token['input_ids'][0].shape)
-            print(target_ids.shape)
-            print(con_token['attention_mask'][0].shape)
-            print(target_mask.shape)
-            print(con_mask.shape)
-            print(target_mask.shape)
-            print(token_type_ids.shape)
-            
-            self.tokenized_input.append(con_ids, isolate_ids, con_t_mask, isolate_t_mask,
+            self.tokenized_input.append(con_ids, isolate_ids, con_mask, isolate_mask,
                                         con_attention, isolate_attention, token_type_ids)
-            self.tokenized_input.append([basic_token['input_ids'][0],basic_token['attention_mask'][0],
-                                    basic_mask, con_token['input_ids'][0],con_token['attention_mask'][0],
-                                    con_mask, label])
         logger.info(f"=====Finished length: {len(self.tokenized_input)}!=====")
 
     def _collate_fn(self, batch):
