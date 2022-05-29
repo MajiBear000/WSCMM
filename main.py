@@ -28,7 +28,7 @@ def get_trainer(args, encoder, tokenizer, raw_data):
         data = processor.melbert_ids(tokenizer)
         model = ClassificationForBasicMean_MelBERT(args, encoder)
     if args.n_gpu > 1 and not args.no_cuda:
-        model = torch.nn.DataParallel(model)
+        model = nn.DataParallel(model)
     trainer = Trainer(args, data, model)
     return data, trainer, model
 

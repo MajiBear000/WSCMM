@@ -373,14 +373,7 @@ class MelbertProcessor(Processor):
             isolate_ids = torch.tensor(isolate_ids, dtype=torch.long)
 
             # change input type #
-            con_ids.to(self.args.device)
-            isolate_ids.to(self.args.device)
-            con_mask.to(self.args.device)
-            isolate_mask.to(self.args.device)
-            con_attention.to(self.args.device)
-            isolate_attention.to(self.args.device)
-            token_type_ids = token_type_ids.int().to(self.args.device)
-            label.to(self.args.device)
+            token_type_ids = token_type_ids.int()
             
             #if (len(self.tokenized_input)) > 64:
                 #break
