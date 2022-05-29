@@ -46,6 +46,8 @@ class Trainer(object):
             args.max_grad_norm : Max gradient norm.
             args.plot_dir : evaluation plot save dir.
             args.stamp : timestamp used to identify saved results.
+
+            args.save_path : path to where experiments saved
             
     """
     def __init__(self, args, data, model):

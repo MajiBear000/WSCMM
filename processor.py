@@ -32,21 +32,25 @@ class prepare_data(object):
         return self.data
 
     def get_embs(self, roberta, tokenizer):
-        '''
-        train_emb = prepare_embedding(args, roberta, tokenizer, raw_data, 'train')
-        if args.ori_emb:
-            test_emb = prepare_embedding(args, roberta, tokenizer, raw_data, 'test')
-            val_emb = prepare_embedding(args, roberta, tokenizer, raw_data, 'val')
-        else:
-            test_emb = prepare_embedding(args, roberta, tokenizer, raw_data, 'test_kn')
-            val_emb = prepare_embedding(args, roberta, tokenizer, raw_data, 'val_kn')
-        '''
-        
         self.data['train'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'train')
-        self.data['test'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'test')
-        self.data['val'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'val')
+        if self.args.ori_emb:
+            self.data['test'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'test')
+            self.data['val'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'val')
+        else:
+            self.data['test'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'test_kn')
+            self.data['val'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'val_kn')
+
         return {'train':train_emb, 'test':test_emb, 'val':val_emb}
-    
+
+    def melbert_ids(self, tokenizer):
+        self.data['train'] = MelbertProcessor(self.args, tokenizer, self.raw_data, 'train')
+        #self._log_skip_words(os.path.join(self.args.trainset_dir, 'train_'), self.data['train'].skip_words)
+        self.data['test'] = MelbertProcessor(self.args, tokenizer, self.raw_data, 'test')
+        #self._log_skip_words(os.path.join(self.args.trainset_dir, 'test_'), self.data['test'].skip_words)
+        #val = BasicIdsProcessor(args, tokenizer, basic_train, raw_data['val'])
+
+        return self.data
+         
     def _log_skip_words(self, path, skip_words):
         path += str(len(skip_words))+'_skipped.txt'
         with open(path, 'w') as f:   
@@ -133,29 +137,30 @@ class BasicEmbsProcessor(Processor):
             save_json(self._basic_emb, _basic_emb_path)
         else:
             self._basic_emb = load_json(_basic_emb_path)
-            logger.info('Succeed load basic mean embedding:',len(self._basic_emb))
+            logger.info(f'Succeed load basic mean embedding: {len(self._basic_emb)}')
 
-    def _trace_data(opt):
+    def _trace_data(self, opt):
         if opt is None:
             logger.warning("ERROR: give a dataset you want to trace")
             exit()
         elif opt == 'train':
-            path = os.path.join(args.trainset_dir, 'data_emb.pth')
+            path = os.path.join(self.args.trainset_dir, 'data_emb.pth')
         elif opt == 'test':
-            path = os.path.join(args.testset_dir, 'test_emb.pth')
+            path = os.path.join(self.args.testset_dir, 'test_emb.pth')
         elif opt == 'val':
-            path = os.path.join(args.valset_dir, 'val_emb.pth')
+            path = os.path.join(self.args.valset_dir, 'val_emb.pth')
         
         elif opt == 'test_kn':      
-            path = os.path.join(args.testset_dir, 'test_emb_kn.pth')
+            path = os.path.join(self.args.testset_dir, 'test_emb_kn.pth')
         elif opt == 'val_kn':      
-            path = os.path.join(args.valset_dir, 'val_emb_kn.pth')
+            path = os.path.join(self.args.valset_dir, 'val_emb_kn.pth')
         return path
 
     def _prepare_embs(self, opt):
         if exists(self._emb_path):
             self.emb_input = load_pth(self._emb_path)
             logger.info(f'data emb loaded: {len(data_emb)}')
+            return 0
 
         logger.info('Start load input embedding...')
         for sample in tqdm(self.raw_data):
@@ -170,20 +175,20 @@ class BasicEmbsProcessor(Processor):
                 outputs = self.model(**tokenized)
             con_vec = outputs[0][0][ni[0]]
         
-            if target in basic_emb.keys():
-                vec = np.array(basic_emb[target])
+            if target in self._basic_emb.keys():
+                vec = np.array(self._basic_emb[target])
                 basic_vec = torch.from_numpy(vec)
             elif opt in ['train', 'test', 'val']:
-                tokenized = tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
+                tokenized = self.tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
                 with torch.no_grad():
-                    outputs = model(**tokenized)
+                    outputs = self.model(**tokenized)
                 basic_vec = outputs[0][0][0]
             else:
                 continue
             
             self.emb_input.append([basic_vec, con_vec, label])
         save_pth(self.emb_input, self._emb_path)
-        logger.info(f'data emb loaded and saved: {len(data_emb)}')
+        logger.info(f'data emb loaded and saved: {len(self.emb_input)}')
 
     def _sample_batch(self, idxs):
         batch = []
@@ -231,7 +236,6 @@ class BasicIdsProcessor(Processor):
             _, con_ni = tokenize_by_index(self.tokenizer, sentence, index)
             con_mask = torch.zeros(con_token['input_ids'][0].shape)
             con_mask[con_ni[0]]=1
-            #print(con_token)
 
             if target in self.basic_train.keys():
                 rand = random.randint(1,len(self.basic_train[target]['sam']))-1
@@ -289,6 +293,83 @@ class BasicIdsProcessor(Processor):
         return self._max_steps
 
 
+class MelbertProcessor(Processor):
+    '''
+        Process and Load data for ClassificationForBasicMean_Roberta Model
+        args.model_name : name of model
+        args.device : index of which device used
+        args.ori_emb : True if contain unknown words
+    '''
+    def __init__(self, args, tokenizer, raw_data, type_='test'):
+        super(MelbertProcessor, self).__init__(args, tokenizer, raw_data, type_)
+        self.tokenized_input = []
+        
+        self._prepare_ids()
+        #self._sampler = self._return_sampler(type_)
+        #self._batch_sampler = BatchSampler(self._sampler(self.tokenized_input), self._batch_size, False)
+        #self._max_steps = len(self._batch_sampler)
+
+    def _prepare_ids(self):
+        logger.info('************ MelBERT Data Processor ***************')
+        for sample in tqdm(self.raw_data):
+            target = sample[0]
+            sentence = sample[1].lower()
+            index = sample[2]
+            label = torch.tensor(int(sample[3]))
+        
+            con_token = self.tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
+            _, con_ni = tokenize_by_index(self.tokenizer, sentence, index)
+            con_mask = torch.zeros(con_token['input_ids'][0].shape)
+            con_mask[con_ni]=1
+
+            target_ids = [self.tokenizer.cls_token] + con_token['input_ids'][con_ni] + [self.tokenizer.sep_token]
+            target_mask = torch.ones(target_ids.shape)
+
+            
+            
+            # break if (len(self.tokenized_input)) > 64
+            print(con_token['input_ids'][0].shape)
+            print(target_ids.shape)
+            print(con_token['attention_mask'][0].shape)
+            print(target_mask.shape)
+            print(con_mask.shape)
+            print(target_mask.shape)
+            print(token_type_ids.shape)
+            self.tokenized_input.append(con_token['input_ids'][0], target_ids, con_token['attention_mask'][0],
+                                        target_mask, con_mask, target_mask, token_type_ids)
+            self.tokenized_input.append([basic_token['input_ids'][0],basic_token['attention_mask'][0],
+                                    basic_mask, con_token['input_ids'][0],con_token['attention_mask'][0],
+                                    con_mask, label])
+        logger.info(f"=====Finished length: {len(self.tokenized_input)}!=====")
+
+    def _collate_fn(self, batch):
+        basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels = zip(*batch)
+
+        basic_ids = pad_sequence(basic_ids, batch_first=True, padding_value=0)
+        basic_attention = pad_sequence(basic_attention, batch_first=True, padding_value=0)
+        basic_mask = pad_sequence(basic_mask, batch_first=True, padding_value=0)
+        con_ids = pad_sequence(con_ids, batch_first=True, padding_value=0)
+        con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
+        con_mask = pad_sequence(con_mask, batch_first=True, padding_value=0)
+        labels = torch.tensor([t for t in labels])
+
+        return basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels
+
+    def _sample_batch(self, idxs):
+        batch = []
+        for i in idxs:
+            sample = self.tokenized_input[i]
+            batch.append(sample)
+        return self._collate_fn(batch)
+    
+    def __iter__(self):
+        for idxs in self._batch_sampler:
+            batch = self._sample_batch(idxs)
+            batch = tuple(t.to(self.args.device) for t in batch)
+            yield batch
+
+    def __len__(self):
+        return self._max_steps
 
 
 
