@@ -36,7 +36,7 @@ class parse_args:
                             help='path for pretrained model')
         parser.add_argument('--seed', type=int, default=42,
                             help='random seed for initialization.')
-        parser.add_argument('--cuda_id', type=str, default='1',
+        parser.add_argument('--cuda_id', type=str, default='multi',
                             help='Which cuda use to training')
         parser.add_argument('--no_cuda', action='store_true',
                             help='input if dont use cuda')
@@ -84,7 +84,8 @@ class parse_args:
 
     def _set_cuda(self):
         ''' set which device programe run '''
-        os.environ["CUDA_VISIBLE_DEVICES"] = self.args.cuda_id#self.args.cuda_id
+        if not self.args.cuda_id == 'multi':
+            os.environ["CUDA_VISIBLE_DEVICES"] = self.args.cuda_id#self.args.cuda_id
         device = torch.device("cuda" if torch.cuda.is_available() and not self.args.no_cuda else "cpu")
         self.args.n_gpu = torch.cuda.device_count()
         self.args.device = device
