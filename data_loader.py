@@ -26,6 +26,8 @@ def _read_vua(file_path, no_fgpos=None):
             sen_id = line[0]
             sentence = line[2]
 
+            pos = line[3]
+            
             if no_fgpos:
                 ind = line[4]
             else:
@@ -35,7 +37,7 @@ def _read_vua(file_path, no_fgpos=None):
             index = int(ind)
             word = sentence.split()[index]
 
-            dataset.append([word, sentence, index, label])
+            dataset.append([word, sentence, index, label, pos])
     print(file_path, len(dataset))
     return dataset
 
