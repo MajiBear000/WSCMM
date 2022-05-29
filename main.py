@@ -12,7 +12,8 @@ from sw.utils import get_model, get_tokenizer, set_seed, test_metrix_log
 from sw.trainer import Trainer
 from processor import prepare_data
 from data_loader import load_data
-from models import ClassificationForBasicMean_Linear, ClassificationForBasicMean_RoBERTa, ClassificationForBasicMean_MelBERT
+from models import (ClassificationForBasicMean_Linear, ClassificationForBasicMean_RoBERTa,
+     ClassificationForBasicMean_MelBERT, Classification_MelBERT)
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +27,19 @@ def get_trainer(args, encoder, tokenizer, raw_data):
         model = ClassificationForBasicMean_RoBERTa(encoder, drop_ratio=args.drop_ratio)
     elif args.model_name=='melbert':
         data = processor.melbert_ids(tokenizer)
-        model = ClassificationForBasicMean_MelBERT(args, encoder)
+        model = Classification_MelBERT(args, encoder)
+    elif args.model_name=='bamebert':
+        basic_encoder = get_model(args.model_path)
+        basic_tokenizer = get_tokenizer(args.model_path)
+        data = processor.bamebert_ids(tokenizer, basic_tokenizer)
+        model = ClassificationForBasicMean_MelBERT(args, encoder, basic_encoder)
     if args.n_gpu > 1 and not args.no_cuda:
         model = nn.DataParallel(model)
     trainer = Trainer(args, data, model)
     return data, trainer, model
 
 def get_encoder(args):
-    if args.model_name in ['melbert']:
+    if args.model_name in ['melbert', 'bamebert']:
         bert = AutoModel.from_pretrained(args.bert_model)
         config = bert.config
         config.type_vocab_size = 4

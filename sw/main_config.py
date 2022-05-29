@@ -44,7 +44,7 @@ class parse_args:
 
         # Training and Model Configs
         parser.add_argument('--model_name', type=str, default='melbert',
-                            choices=['linear','roberta', 'melbert'],
+                            choices=['linear','roberta', 'melbert', 'bamebert'],
                             help='name of model')
         parser.add_argument('--do_lower_case', type=bool, default=True,
                             help='input if train with lowcase')

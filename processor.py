@@ -41,14 +41,19 @@ class prepare_data(object):
             self.data['test'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'test_kn')
             self.data['val'] = BasicEmbsProcessor(self.args, roberta, tokenizer, self.basic, self.raw_data, 'val_kn')
 
-        return {'train':train_emb, 'test':test_emb, 'val':val_emb}
+        return self.data
 
     def melbert_ids(self, tokenizer):
         self.data['train'] = MelbertProcessor(self.args, tokenizer, self.raw_data, 'train')
-        #self._log_skip_words(os.path.join(self.args.trainset_dir, 'train_'), self.data['train'].skip_words)
         self.data['test'] = MelbertProcessor(self.args, tokenizer, self.raw_data, 'test')
+
+        return self.data
+    
+    def melbert_ids(self, tokenizer, basic_tokenizer):
+        self.data['train'] = BaMeBertProcessor(self.args, tokenizer, basic_tokenizer, self.basic, self.raw_data, 'train')
+        #self._log_skip_words(os.path.join(self.args.trainset_dir, 'train_'), self.data['train'].skip_words)
+        self.data['test'] = BaMeBertProcessor(self.args, tokenizer, basic_tokenizer, self.basic, self.raw_data, 'test')
         #self._log_skip_words(os.path.join(self.args.trainset_dir, 'test_'), self.data['test'].skip_words)
-        #val = BasicIdsProcessor(args, tokenizer, basic_train, raw_data['val'])
 
         return self.data
          
@@ -294,6 +299,159 @@ class BasicIdsProcessor(Processor):
         return self._max_steps
 
 
+class BaMeBertProcessor(Processor):
+    '''
+        Process and Load data for ClassificationForBasicMean_Roberta Model
+        args.model_name : name of model
+        args.device : index of which device used
+        args.ori_emb : True if contain unknown words
+    '''
+    def __init__(self, args, tokenizer, basic_tokenizer, basic_train,, raw_data, type_='test', basicer=DefaultBasic()):
+        super(BaMeBertProcessor, self).__init__(args, tokenizer, raw_data, type_)
+        self.basicer = basicer
+        self.basic_train = basic_train
+        self.tokenized_input = []
+        self.basic_tokenizer = basic_tokenizer
+        
+        self._prepare_ids()
+        self._sampler = self._return_sampler(type_)
+        self._batch_sampler = BatchSampler(self._sampler(self.tokenized_input), self._batch_size, False)
+        self._max_steps = len(self._batch_sampler)
+
+    def _prepare_ids(self):
+        logger.info('************ MelBERT Data Processor ***************')
+        for sample in tqdm(self.raw_data):
+            target = sample[0]
+            sentence = sample[1].lower()
+            index = sample[2]
+            label = torch.tensor(int(sample[3]))
+            pos = sample[4]
+
+            # --------------------Context encoding------------------------#
+            con_tokens, con_mask, con_attention, token_type_ids = self._get_seq_ids(target, sentence, index, pos, self.tokenizer)
+
+            # ------------------Isolated target encoding----------------------#
+            # get tokens of isolated target #
+            isolate_ids_attetion = self.tokenizer(target,padding=True,truncation=True,max_length=512,return_tensors="pt")
+            isolate_tokens = self.tokenizer.convert_ids_to_tokens(isolate_ids_attetion['input_ids'][0])
+            isolate_attention = isolate_ids_attetion['attention_mask'][0]
+            isolate_mask = torch.zeros(isolate_attention.shape)
+            isolate_mask[1:-1]=1
+
+            # --------------------Basic Mean encoding------------------------#
+            if target in self.basic_train.keys():
+                rand = random.randint(1,len(self.basic_train[target]['sam']))-1
+                basic_sentence, basic_index = self.basic_train[target]['sam'][rand]
+                basic_tokens, basic_mask, basic_attention, basic_token_type_ids = self._get_seq_ids(target, basic_sentence, basic_index, pos, self.basic_tokenizer)
+            elif not self.args.ori_emb:
+                basic_tokens, basic_mask, basic_attention, basic_token_type_ids = self._get_seq_ids(target, sentence, index, pos, self.tokenizer)    
+            else:
+                basic_sen, basic_idx = self._basicer(target)
+                if basic_sen == None:
+                    basic_tokens, basic_mask, basic_attention, basic_token_type_ids = self._get_seq_ids(target, sentence, index, pos, self.tokenizer)
+                basic_tokens, basic_mask, basic_attention, basic_token_type_ids = self._get_seq_ids(target, basic_sentence, basic_index, pos, self.basic_tokenizer)
+
+            # --------------------Convert to ids------------------------#
+            # convert tokens to ids #
+            con_ids = self.tokenizer.convert_tokens_to_ids(con_tokens)
+            con_ids = torch.tensor(con_ids, dtype=torch.long)
+            basic_ids = self.basic_tokenizer.convert_tokens_to_ids(basic_tokens)
+            basic_ids = torch.tensor(basic_ids, dtype=torch.long)
+            isolate_ids = self.tokenizer.convert_tokens_to_ids(isolate_tokens)
+            isolate_ids = torch.tensor(isolate_ids, dtype=torch.long)
+
+            # change input type #
+            token_type_ids = token_type_ids.int()
+            basic_token_type_ids = token_type_ids.int()
+            
+            #if (len(self.tokenized_input)) > 64:
+                #break
+            self.tokenized_input.append([con_ids, isolate_ids, con_mask, isolate_mask,
+                                         con_attention, isolate_attention, token_type_ids,
+                                         basic_ids, basic_mask, basic_attention, basic_token_type_ids,
+                                         label])
+        logger.info(f"=====Finished length: {len(self.tokenized_input)}!=====")
+
+    def _get_seq_ids(self, target, sentence, index, pos, tokenizer):
+        # get tokens of context and target #
+        _ids_attetion = tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
+        tokens = tokenizer.convert_ids_to_tokens(_ids_attetion['input_ids'][0])
+        attention = _ids_attetion['attention_mask'][0]
+        _, _ni = tokenize_by_index(tokenizer, sentence, index)
+        mask = torch.zeros(attention.shape)
+        mask[_ni[0]:_ni[1]]=1
+        token_type_ids = mask
+        if not tokenizer.convert_tokens_to_ids(tokens)==_:
+            print('*********** Token Split Error! ***********')
+            
+        # POS tag adding #
+        _pad_len=1
+        if self.args.use_pos:
+            _pad_len = len(tokens)
+            _pos_token = tokenizer.tokenize(pos)
+            tokens += _pos_token + [tokenizer.sep_token]
+            _pad_len = len(tokens) - _pad_len
+            _padding = (0, pad_len)
+            attention = F.pad(attention, _padding, value=1)
+            mask = F.pad(mask, _padding, value=0)
+            token_type_ids = F.pad(token_type_ids, _padding, value=3)     
+
+        # set local content #
+        if self.args.use_local_context:
+            _local_start = 1
+            _local_end = len(_tokens) - _pad_len
+            _comma1 = tokenizer.tokenize(",")[0]
+            _comma2 = tokenizer.tokenize(" ,")[0]
+            for i, w in enumerate(_tokens):
+                if i < _ni[0] and (w in [_comma1, _comma2]):
+                    _local_start = i+1
+                if i > _ni[1]-1 and (w in [_comma1, _comma2]):
+                    _local_end = i
+                    break
+            token_type_ids[local_start:local_end] = 2
+            token_type_ids[_ni[0]:_ni[1]]=1
+        else:
+            token_type_ids[_ni[0]:_ni[1]]=1
+
+        return tokens, mask, attention, token_type_ids
+
+    def _collate_fn(self, batch):
+        con_ids, isolate_ids, con_mask, isolate_mask, con_attention, isolate_attention, token_type_ids, basic_ids, basic_mask, basic_attention, basic_token_type_ids, labels = zip(*batch)
+
+        con_ids = pad_sequence(con_ids, batch_first=True, padding_value=0)
+        isolate_ids = pad_sequence(isolate_ids, batch_first=True, padding_value=0)
+        con_mask = pad_sequence(con_mask, batch_first=True, padding_value=0)
+        isolate_mask = pad_sequence(isolate_mask, batch_first=True, padding_value=0)
+        con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
+        isolate_attention = pad_sequence(isolate_attention, batch_first=True, padding_value=0)
+        token_type_ids = pad_sequence(token_type_ids, batch_first=True, padding_value=0)
+        
+        basic_ids = pad_sequence(basic_ids, batch_first=True, padding_value=0)
+        basic_mask = pad_sequence(basic_mask, batch_first=True, padding_value=0)
+        basic_attention = pad_sequence(basic_attention, batch_first=True, padding_value=0)
+        basic_token_type_ids = pad_sequence(basic_token_type_ids, batch_first=True, padding_value=0)
+        
+        labels = torch.tensor([t for t in labels])
+        
+        return con_ids, isolate_ids, con_mask, isolate_mask, con_attention, isolate_attention, token_type_ids, basic_ids, basic_mask, basic_attention, basic_token_type_ids, labels
+
+    def _sample_batch(self, idxs):
+        batch = []
+        for i in idxs:
+            sample = self.tokenized_input[i]
+            batch.append(sample)
+        return self._collate_fn(batch)
+    
+    def __iter__(self):
+        for idxs in self._batch_sampler:
+            batch = self._sample_batch(idxs)
+            batch = tuple(t.to(self.args.device) for t in batch)
+            yield batch
+
+    def __len__(self):
+        return self._max_steps
+
+
 class MelbertProcessor(Processor):
     '''
         Process and Load data for ClassificationForBasicMean_Roberta Model
@@ -410,7 +568,6 @@ class MelbertProcessor(Processor):
 
     def __len__(self):
         return self._max_steps
-
 
 
 
