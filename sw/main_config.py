@@ -43,6 +43,8 @@ class parse_args:
                             help='name of model')
         parser.add_argument('--con_emb', action='store_true',
                             help='concatenate basic emb and context emb')
+        parser.add_argument('--use_local_context', type=bool, default=True,
+                            help='input if chunck sentence by comma <,>')
         
         parser.add_argument('--drop_ratio', type=float, default=0.2,
                             help='ratio of dropout layer')

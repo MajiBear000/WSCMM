@@ -312,16 +312,59 @@ class MelbertProcessor(Processor):
     def _prepare_ids(self):
         logger.info('************ MelBERT Data Processor ***************')
         for sample in tqdm(self.raw_data):
+            '''
             target = sample[0]
             sentence = sample[1].lower()
             index = sample[2]
             label = torch.tensor(int(sample[3]))
-        
-            con_token = self.tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
-            _, con_ni = tokenize_by_index(self.tokenizer, sentence, index)
-            con_mask = torch.zeros(con_token['input_ids'][0].shape)
-            con_mask[con_ni]=1
+            '''
+            target = 'king'
+            sentence = "I'm the, 'king of the, world!"
+            index = 2
+            label = torch.tensor(1)
 
+            # get tokens of context and target #
+            con_ids_attetion = self.tokenizer(sentence,padding=True,truncation=True,max_length=512,return_tensors="pt")
+            con_tokens = self.tokenizer.convert_ids_to_tokens(con_ids_attetion['input_ids'][0])
+            print('con_tokens: ',con_tokens)
+            con_attention = con_ids_attetion['attention_mask'][0]
+            print('attention:', con_attention)
+            _, con_ni = tokenize_by_index(self.tokenizer, sentence, index)
+            if not self.tokenizer.convert_tokens_to_ids(con_tokens)==_:
+                print('*********** Token Split Error! ***********')
+            
+            con_mask = torch.zeros(con_attention.shape)
+            print('con_mask: ', con_mask)
+            con_mask[con_ni[0]:con_ni[1]]=1
+            token_type_ids = con_mask
+            print('token_type_ids: ', token_type_ids)
+
+            # set local content #
+            if self.args.use_local_context:
+                local_start = 1
+                local_end = len(con_tokens) - 1
+                comma1 = self.tokenizer.tokenize(",")[0]
+                comma2 = self.tokenizer.tokenize(" ,")[0]
+                print('comma2: ', comma2)
+                for i, w in enumerate(con_tokens):
+                    if i < con_ni[0] and (w in [comma1, comma2]):
+                        local_start = i+1
+                    if i > con_ni[1]-1 and (w in [comma1, comma2]):
+                        local_end = i
+                        break
+                token_type_ids[local_start:local_end] = 2
+                token_type_ids[con_ni[0]:con_ni[1]]=1
+                print('token_type_ids:', token_type_ids)
+            else:
+                token_type_ids[con_ni[0]:con_ni[1]]=1
+
+            
+            print('con_mask:', con_mask)
+            print(con_ni)
+            print(con_mask)
+            print(con_token['input_ids'])
+            target_ids = con_token['input_ids'][con_ni[0]:con_ni[1]]
+            print(target_ids)
             target_ids = [self.tokenizer.cls_token] + con_token['input_ids'][con_ni] + [self.tokenizer.sep_token]
             target_mask = torch.ones(target_ids.shape)
 
@@ -335,8 +378,9 @@ class MelbertProcessor(Processor):
             print(con_mask.shape)
             print(target_mask.shape)
             print(token_type_ids.shape)
-            self.tokenized_input.append(con_token['input_ids'][0], target_ids, con_token['attention_mask'][0],
-                                        target_mask, con_mask, target_mask, token_type_ids)
+            
+            self.tokenized_input.append(con_ids, isolate_ids, con_t_mask, isolate_t_mask,
+                                        con_attention, isolate_attention, token_type_ids)
             self.tokenized_input.append([basic_token['input_ids'][0],basic_token['attention_mask'][0],
                                     basic_mask, con_token['input_ids'][0],con_token['attention_mask'][0],
                                     con_mask, label])
