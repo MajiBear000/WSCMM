@@ -4,6 +4,9 @@ from os.path import exists
 import argparse
 import torch
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class parse_args:
     def __init__(self):
@@ -83,8 +86,9 @@ class parse_args:
         ''' set which device programe run '''
         os.environ["CUDA_VISIBLE_DEVICES"] = self.args.cuda_id#self.args.cuda_id
         device = torch.device("cuda" if torch.cuda.is_available() and not self.args.no_cuda else "cpu")
-        self.args.n_gpu = 1
+        self.args.n_gpu = torch.cuda.device_count()
         self.args.device = device
+        logger.info(f'Device: {self.args.device}')
 
     def _set_timestamp(self):
         ''' set unit stamp by time to save results '''

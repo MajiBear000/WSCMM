@@ -89,9 +89,10 @@ class Trainer(object):
     def train(self):
         # Train
         logger.info("***** Running training *****")
-        for epoch in trange(int(self.args.epochs), desc="Epoch"):
+        for epoch in range(int(self.args.epochs)):
+            logger.info(f"===== Epoches: {epoch+1} =====")
             tr_loss = 0
-            for step, batch in enumerate(self.train_data):
+            for step, batch in tqdm(enumerate(self.train_data), desc="Epoch"):
                 self.model.train()
                 batch = tuple(t.to(self.args.device) for t in batch)
                 inputs, labels = get_input_from_batch(self.args.model_name,
