@@ -29,6 +29,16 @@ def get_input_from_batch(model_name, batch):
                     'con_mask': batch[5],
                     }
         labels = batch[6]
+    elif model_name == 'melbert':
+        inputs = {  'input_ids': batch[0],
+                    'input_ids_2': batch[1],
+                    'target_mask': batch[2],
+                    'target_mask_2': batch[3],
+                    'attention_mask': batch[4],
+                    'attention_mask_2': batch[5],
+                    'token_type_ids': batch[6],
+                    }
+        labels = batch[7]
     elif model_name == 'linear':
         inputs = {  'basic_emb': batch[0],
                     'test_emb': batch[1],
@@ -83,11 +93,12 @@ class Trainer(object):
             tr_loss = 0
             for step, batch in enumerate(self.train_data):
                 self.model.train()
+                batch = tuple(t.to(self.args.device) for t in batch)
                 inputs, labels = get_input_from_batch(self.args.model_name,
                                                       batch)
                 logits  = self.model(**inputs)
             
-                loss = self.loss_func(logits, labels)
+                loss = self.loss_func(logits, labels).to(self.args.device)
                 if self.args.n_gpu>1:
                     loss = loss.mean()
                 loss.backward()
@@ -120,6 +131,7 @@ class Trainer(object):
         t_loss = 0
         for step, batch in enumerate(test_data):
             #batch = tuple(t.to(self.device) for t in batch)
+            batch = tuple(t.to(self.args.device) for t in batch)
             inputs, labels = get_input_from_batch(self.args.model_name, batch)
             with torch.no_grad():
                 logits = self.model(**inputs)

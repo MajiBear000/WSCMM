@@ -306,9 +306,9 @@ class MelbertProcessor(Processor):
         self.tokenized_input = []
         
         self._prepare_ids()
-        #self._sampler = self._return_sampler(type_)
-        #self._batch_sampler = BatchSampler(self._sampler(self.tokenized_input), self._batch_size, False)
-        #self._max_steps = len(self._batch_sampler)
+        self._sampler = self._return_sampler(type_)
+        self._batch_sampler = BatchSampler(self._sampler(self.tokenized_input), self._batch_size, False)
+        self._max_steps = len(self._batch_sampler)
 
     def _prepare_ids(self):
         logger.info('************ MelBERT Data Processor ***************')
@@ -371,24 +371,29 @@ class MelbertProcessor(Processor):
             con_ids = torch.tensor(con_ids, dtype=torch.long)
             isolate_ids = self.tokenizer.convert_tokens_to_ids(isolate_tokens)
             isolate_ids = torch.tensor(isolate_ids, dtype=torch.long)
-            
-            # break if (len(self.tokenized_input)) > 64
-            self.tokenized_input.append(con_ids, isolate_ids, con_mask, isolate_mask,
-                                        con_attention, isolate_attention, token_type_ids)
+
+            # change input type #
+            token_type_ids = token_type_ids.int()
+
+            if (len(self.tokenized_input)) > 64:
+                break
+            self.tokenized_input.append([con_ids, isolate_ids, con_mask, isolate_mask,
+                                        con_attention, isolate_attention, token_type_ids, label])
         logger.info(f"=====Finished length: {len(self.tokenized_input)}!=====")
 
     def _collate_fn(self, batch):
-        basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels = zip(*batch)
+        con_ids, isolate_ids, con_mask, isolate_mask, con_attention, isolate_attention, token_type_ids, labels = zip(*batch)
 
-        basic_ids = pad_sequence(basic_ids, batch_first=True, padding_value=0)
-        basic_attention = pad_sequence(basic_attention, batch_first=True, padding_value=0)
-        basic_mask = pad_sequence(basic_mask, batch_first=True, padding_value=0)
         con_ids = pad_sequence(con_ids, batch_first=True, padding_value=0)
-        con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
+        isolate_ids = pad_sequence(isolate_ids, batch_first=True, padding_value=0)
         con_mask = pad_sequence(con_mask, batch_first=True, padding_value=0)
+        isolate_mask = pad_sequence(isolate_mask, batch_first=True, padding_value=0)
+        con_attention = pad_sequence(con_attention, batch_first=True, padding_value=0)
+        isolate_attention = pad_sequence(isolate_attention, batch_first=True, padding_value=0)
+        token_type_ids = pad_sequence(token_type_ids, batch_first=True, padding_value=0)
         labels = torch.tensor([t for t in labels])
-
-        return basic_ids,basic_attention,basic_mask,con_ids,con_attention,con_mask,labels
+        
+        return con_ids, isolate_ids, con_mask, isolate_mask, con_attention, isolate_attention, token_type_ids, labels
 
     def _sample_batch(self, idxs):
         batch = []

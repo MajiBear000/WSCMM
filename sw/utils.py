@@ -61,7 +61,7 @@ def tokenize_by_index(tokenizer, seq, index=None, no_flat=False):
     seq = seq.split(' ')   # seq already being splited
     tokens_ids = [[tokenizer.bos_token_id]]
     for i,ele in enumerate(seq):
-        if i:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(ele, add_prefix_space = True)))
+        if i:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(' '+ele)))
         else:    tokens_ids.append(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(ele)))
     tokens_ids.append([tokenizer.eos_token_id])
 

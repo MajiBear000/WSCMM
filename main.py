@@ -2,9 +2,11 @@
 import os
 import logging
 
+import torch.nn as nn
+from transformers import AutoTokenizer, AutoModel
 import sys
 sys.path.append("..")
-import test
+
 from sw.main_config import parse_args
 from sw.utils import get_model, get_tokenizer, set_seed, test_metrix_log
 from sw.trainer import Trainer
@@ -25,9 +27,30 @@ def get_trainer(args, encoder, tokenizer, raw_data):
     elif args.model_name=='melbert':
         data = processor.melbert_ids(tokenizer)
         model = ClassificationForBasicMean_MelBERT(args, encoder)
-    model.to(args.device)
     trainer = Trainer(args, data, model)
     return data, trainer, model
+
+def get_encoder(args):
+    if args.model_name in ['melbert']:
+        bert = AutoModel.from_pretrained(args.bert_model)
+        config = bert.config
+        config.type_vocab_size = 4
+        if "albert" in args.bert_model:
+            bert.embeddings.token_type_embeddings = nn.Embedding(
+                config.type_vocab_size, config.embedding_size
+            )
+        else:
+            bert.embeddings.token_type_embeddings = nn.Embedding(
+                config.type_vocab_size, config.hidden_size
+            )
+        bert._init_weights(bert.embeddings.token_type_embeddings)
+
+        encoder = bert
+        tokenizer = AutoTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+    else:
+        encoder = get_model(args.model_path)
+        tokenizer = get_tokenizer(args.model_path)
+    return encoder, tokenizer
     
 def main():
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO)
@@ -36,9 +59,8 @@ def main():
     logger.info(vars(args))
     set_seed(args)
 
-    encoder = get_model(args.model_path)
-    tokenizer = get_tokenizer(args.model_path)
-    logger.info('***** Model Load Success *****')
+    encoder, tokenizer = get_encoder(args)
+    logger.info('***** Encoder Load Success *****')
     
     raw_data = load_data(args)
     logger.info('***** Data Load Success *****')

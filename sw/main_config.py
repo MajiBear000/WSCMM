@@ -16,6 +16,8 @@ class parse_args:
         parser = argparse.ArgumentParser()
 
         # Required parameters
+        parser.add_argument('--bert_model', type=str, default='roberta-base',
+                            help='name of pre-trained model')
         parser.add_argument('--dataset_name', type=str, default='vua20',
                             choices=['vua18','vua20', 'trofi', 'mohx'],
                             help='name of dataset')
@@ -41,12 +43,16 @@ class parse_args:
         parser.add_argument('--model_name', type=str, default='melbert',
                             choices=['linear','roberta', 'melbert'],
                             help='name of model')
+        parser.add_argument('--do_lower_case', type=bool, default=True,
+                            help='input if train with lowcase')
         parser.add_argument('--con_emb', action='store_true',
                             help='concatenate basic emb and context emb')
         parser.add_argument('--use_pos', type=bool, default=True,
                             help='input if add pos in sentence')
         parser.add_argument('--use_local_context', type=bool, default=True,
                             help='input if chunck sentence by comma <,>')
+        parser.add_argument('--classifier_hidden', type=int, default=768,
+                            help='The hidden dimension for classifier (default = 768)')
         
         parser.add_argument('--drop_ratio', type=float, default=0.2,
                             help='ratio of dropout layer')

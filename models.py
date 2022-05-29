@@ -124,15 +124,15 @@ class ClassificationForBasicMean_MelBERT(DNN):
 
     def __init__(self, args, Model, num_labels=2):
         """Initialize the model"""
-        super(AutoModelForSequenceClassification_SPV_MIP, self).__init__()
+        super(ClassificationForBasicMean_MelBERT, self).__init__()
         self.num_labels = num_labels
         self.encoder = Model
         self.config = self.encoder.config
         self.dropout = nn.Dropout(args.drop_ratio)
         self.args = args
 
-        self.SPV_linear = nn.Linear(config.hidden_size * 2, args.classifier_hidden)
-        self.MIP_linear = nn.Linear(config.hidden_size * 2, args.classifier_hidden)
+        self.SPV_linear = nn.Linear(self.config.hidden_size * 2, args.classifier_hidden)
+        self.MIP_linear = nn.Linear(self.config.hidden_size * 2, args.classifier_hidden)
         self.classifier = nn.Linear(args.classifier_hidden * 2, num_labels)
         self._init_weights(self.SPV_linear)
         self._init_weights(self.MIP_linear)
